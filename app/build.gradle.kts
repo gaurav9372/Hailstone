@@ -9,10 +9,12 @@ android {
     val commitHash = providers.exec {
         workingDir = rootDir
         commandLine = "git rev-parse --short HEAD".split(" ")
-    }.standardOutput.asText.get().trim()
+        isIgnoreExitValue = true
+    }.standardOutput.asText.get().trim().ifEmpty { "unknown" }
     val commitSubject = providers.exec {
         workingDir = rootDir
         commandLine = "git log -1 --pretty=%s".split(" ")
+        isIgnoreExitValue = true
     }.standardOutput.asText.get().trim()
 
     namespace = "com.aistra.hail"

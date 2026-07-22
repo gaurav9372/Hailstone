@@ -24,9 +24,21 @@ class PagerAdapter(
     private var loadIconJob: Job? = null
     lateinit var onItemClickListener: OnItemClickListener
     lateinit var onItemLongClickListener: OnItemLongClickListener
+    var listView: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            notifyDataSetChanged()
+        }
+
+    override fun getItemViewType(position: Int): Int = if (listView) VIEW_TYPE_LIST else VIEW_TYPE_GRID
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder = ViewHolder(
-        LayoutInflater.from(parent.context).inflate(R.layout.item_home, parent, false)
+        LayoutInflater.from(parent.context).inflate(
+            if (viewType == VIEW_TYPE_LIST) R.layout.item_home_list else R.layout.item_home,
+            parent,
+            false
+        )
     )
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
@@ -93,6 +105,11 @@ class PagerAdapter(
 
     interface OnItemLongClickListener {
         fun onItemLongClick(info: AppInfo): Boolean
+    }
+
+    private companion object {
+        const val VIEW_TYPE_GRID = 0
+        const val VIEW_TYPE_LIST = 1
     }
 }
 

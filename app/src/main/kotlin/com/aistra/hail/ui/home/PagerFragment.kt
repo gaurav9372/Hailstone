@@ -28,6 +28,7 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.aistra.hail.HailApp.Companion.app
 import com.aistra.hail.R
@@ -78,12 +79,8 @@ class PagerFragment : MainFragment(), PagerAdapter.OnItemClickListener, PagerAda
             onItemLongClickListener = this@PagerFragment
         }
         binding.recyclerView.run {
-            layoutManager = GridLayoutManager(
-                activity, resources.getInteger(
-                    if (HailData.compactIcon) R.integer.home_span_compact else R.integer.home_span
-                )
-            )
             adapter = pagerAdapter
+            applyHomeLayout(HailData.homeListView)
             addOnScrollListener(object : RecyclerView.OnScrollListener() {
                 override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                     super.onScrollStateChanged(recyclerView, newState)
@@ -108,6 +105,25 @@ class PagerFragment : MainFragment(), PagerAdapter.OnItemClickListener, PagerAda
             applyDefaultInsetter { marginRelative(isRtl, start = !isLandscape, end = true) }
         }
         return binding.root
+    }
+
+    private fun applyHomeLayout(listView: Boolean) {
+        pagerAdapter.listView = listView
+        binding.recyclerView.layoutManager = if (listView) {
+            LinearLayoutManager(activity)
+        } else {
+            GridLayoutManager(
+                activity, resources.getInteger(
+                    if (HailData.compactIcon) R.integer.home_span_compact else R.integer.home_span
+                )
+            )
+        }
+    }
+
+    private fun setHomeLayout(listView: Boolean, item: MenuItem) {
+        HailData.homeListView = listView
+        applyHomeLayout(listView)
+        item.isChecked = true
     }
 
     override fun onResume() {
@@ -554,6 +570,16 @@ class PagerFragment : MainFragment(), PagerAdapter.OnItemClickListener, PagerAda
                 } else deselect()
             }
 
+            R.id.action_view_grid -> {
+                setHomeLayout(false, item)
+                return true
+            }
+
+            R.id.action_view_list -> {
+                setHomeLayout(true, item)
+                return true
+            }
+
             R.id.action_freeze_current -> setListFrozen(true, pagerAdapter.currentList.filterNot { it.whitelisted })
 
             R.id.action_unfreeze_current -> setListFrozen(false, pagerAdapter.currentList)
@@ -598,6 +624,9 @@ class PagerFragment : MainFragment(), PagerAdapter.OnItemClickListener, PagerAda
             override fun onQueryTextSubmit(query: String): Boolean = true
         })
         menu.findItem(R.id.action_multiselect).updateIcon()
+        menu.findItem(
+            if (HailData.homeListView) R.id.action_view_list else R.id.action_view_grid
+        ).isChecked = true
     }
 
     override fun onDestroyView() {
