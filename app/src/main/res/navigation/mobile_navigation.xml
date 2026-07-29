@@ -8,7 +8,28 @@
     <fragment
         android:id="@+id/nav_home"
         android:name="com.aistra.hail.ui.home.HomeFragment"
-        android:label="@string/app_name" />
+        android:label="@string/brand_name" />
+
+    <fragment
+        android:id="@+id/nav_freezer"
+        android:name="com.aistra.hail.ui.freezer.FreezerFragment"
+        android:label="@string/title_freezer">
+        <action
+            android:id="@+id/action_nav_freezer_to_freezerListFragment"
+            app:destination="@id/freezerListFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/freezerListFragment"
+        android:name="com.aistra.hail.ui.freezer.FreezerListFragment"
+        android:label="{listName}">
+        <argument
+            android:name="listId"
+            app:argType="string" />
+        <argument
+            android:name="listName"
+            app:argType="string" />
+    </fragment>
 
     <fragment
         android:id="@+id/nav_apps"

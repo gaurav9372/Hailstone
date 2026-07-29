@@ -8,8 +8,7 @@
     android:minHeight="64dp"
     android:orientation="horizontal"
     android:paddingStart="@dimen/padding_small"
-    android:paddingEnd="@dimen/padding_small"
-    tools:viewBindingIgnore="true">
+    android:paddingEnd="@dimen/padding_small">
 
     <ImageView
         android:id="@+id/app_icon"

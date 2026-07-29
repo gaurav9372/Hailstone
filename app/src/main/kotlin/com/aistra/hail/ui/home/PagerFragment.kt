@@ -120,14 +120,20 @@ class PagerFragment : MainFragment(), PagerAdapter.OnItemClickListener, PagerAda
         }
     }
 
-    private fun setHomeLayout(listView: Boolean, item: MenuItem) {
+    private fun setHomeLayout(listView: Boolean) {
         HailData.homeListView = listView
         applyHomeLayout(listView)
-        item.isChecked = true
+        val menu = activity.findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar).menu
+        menu.findItem(R.id.action_view_grid).isChecked = !listView
+        menu.findItem(R.id.action_view_list).isChecked = listView
     }
 
     override fun onResume() {
         super.onResume()
+        activity.fab.apply {
+            setIconResource(R.drawable.ic_round_frozen)
+            text = ""
+        }
         updateCurrentList()
         updateBarTitle()
         activity.appbar.setLiftOnScrollTargetView(binding.recyclerView)
@@ -160,7 +166,7 @@ class PagerFragment : MainFragment(), PagerAdapter.OnItemClickListener, PagerAda
     private fun updateBarTitle() {
         activity.supportActionBar?.title =
             if (multiselect) getString(R.string.msg_selected, selectedList.size.toString())
-            else getString(R.string.app_name)
+            else getString(R.string.brand_name)
     }
 
     override fun onItemClick(info: AppInfo) {
@@ -571,12 +577,12 @@ class PagerFragment : MainFragment(), PagerAdapter.OnItemClickListener, PagerAda
             }
 
             R.id.action_view_grid -> {
-                setHomeLayout(false, item)
+                setHomeLayout(false)
                 return true
             }
 
             R.id.action_view_list -> {
-                setHomeLayout(true, item)
+                setHomeLayout(true)
                 return true
             }
 
@@ -624,9 +630,8 @@ class PagerFragment : MainFragment(), PagerAdapter.OnItemClickListener, PagerAda
             override fun onQueryTextSubmit(query: String): Boolean = true
         })
         menu.findItem(R.id.action_multiselect).updateIcon()
-        menu.findItem(
-            if (HailData.homeListView) R.id.action_view_list else R.id.action_view_grid
-        ).isChecked = true
+        menu.findItem(R.id.action_view_grid).isChecked = !HailData.homeListView
+        menu.findItem(R.id.action_view_list).isChecked = HailData.homeListView
     }
 
     override fun onDestroyView() {

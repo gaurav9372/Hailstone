@@ -36,7 +36,7 @@ object HUI {
     fun openLink(url: String): Boolean = startActivity(uri = url)
 
     fun copyText(text: String) = app.getSystemService<ClipboardManager>()
-        ?.setPrimaryClip(ClipData.newPlainText(app.getString(R.string.app_name), text))
+        ?.setPrimaryClip(ClipData.newPlainText(app.getString(R.string.brand_name), text))
 
     fun pasteText(): String? = app.getSystemService<ClipboardManager>()?.primaryClip?.getItemAt(0)?.text?.toString()
 }

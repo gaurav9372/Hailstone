@@ -27,7 +27,7 @@
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-                tools:text="@string/app_name"/>
+                tools:text="@string/brand_name"/>
 
         <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/app_desc"

@@ -79,7 +79,7 @@ class AboutFragment : MainFragment() {
                         contentScale = ContentScale.None
                     )
                     Text(
-                        text = stringResource(R.string.app_name), style = MaterialTheme.typography.bodyLarge
+                        text = stringResource(R.string.brand_name), style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
                         text = stringResource(R.string.app_slogan), style = MaterialTheme.typography.bodyMedium

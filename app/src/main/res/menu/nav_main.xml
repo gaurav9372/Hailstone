@@ -5,6 +5,10 @@
         android:icon="@drawable/ic_round_frozen"
         android:title="@string/title_home" />
     <item
+        android:id="@+id/nav_freezer"
+        android:icon="@drawable/ic_outline_folder"
+        android:title="@string/title_freezer" />
+    <item
         android:id="@+id/nav_apps"
         android:icon="@drawable/ic_baseline_android"
         android:title="@string/title_apps" />

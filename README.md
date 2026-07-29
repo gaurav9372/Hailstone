@@ -12,6 +12,10 @@ Hailstone will evolve through focused UI and UX improvements. This section will 
 
 - **Grid and list views on the Home screen** — switch between the original grid layout and a new list layout using the view menu in the toolbar.
 - **Persistent view preference** — Hailstone remembers the selected Home screen layout after the app or phone restarts.
+- **Custom Freezer lists** — create persistent named app lists and freeze only the apps in the opened list.
+- **Focused list management** — add, edit, rename, or delete lists from dedicated screens without the primary navigation bar.
+- **Searchable app picker** — add or remove apps with icons, selected-first ordering, search, and user/system or frozen/unfrozen filters.
+- **Hailstone branding** — the app now uses the Hailstone name throughout its primary user-facing surfaces.
 
 ## Project direction
 

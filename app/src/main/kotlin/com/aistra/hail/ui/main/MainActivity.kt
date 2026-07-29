@@ -2,6 +2,7 @@ package com.aistra.hail.ui.main
 
 import android.os.Bundle
 import android.view.Menu
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
@@ -30,6 +31,7 @@ import com.google.android.material.floatingactionbutton.ExtendedFloatingActionBu
 class MainActivity : AppCompatActivity(), NavController.OnDestinationChangedListener {
     lateinit var fab: ExtendedFloatingActionButton
     lateinit var appbar: AppBarLayout
+    private lateinit var navController: NavController
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,10 +69,10 @@ class MainActivity : AppCompatActivity(), NavController.OnDestinationChangedList
         appbar = appBarMain.appBarLayout
 
         val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
-        val navController = navHostFragment.navController
+        navController = navHostFragment.navController
         navController.addOnDestinationChangedListener(this@MainActivity)
         val appBarConfiguration = AppBarConfiguration.Builder(
-            R.id.nav_home, R.id.nav_apps, R.id.nav_settings, R.id.nav_about
+            R.id.nav_home, R.id.nav_freezer, R.id.nav_apps, R.id.nav_settings, R.id.nav_about
         ).build()
         setupActionBarWithNavController(navController, appBarConfiguration)
         bottomNav?.setupWithNavController(navController)
@@ -91,6 +93,8 @@ class MainActivity : AppCompatActivity(), NavController.OnDestinationChangedList
         return super.onCreateOptionsMenu(menu)
     }
 
+    override fun onSupportNavigateUp(): Boolean = navController.navigateUp() || super.onSupportNavigateUp()
+
     fun ownerRemoveDialog() {
         MaterialAlertDialogBuilder(this).setTitle(R.string.title_remove_owner).setMessage(R.string.msg_remove_owner)
             .setPositiveButton(R.string.action_continue) { _, _ ->
@@ -107,7 +111,13 @@ class MainActivity : AppCompatActivity(), NavController.OnDestinationChangedList
     override fun onDestinationChanged(
         controller: NavController, destination: NavDestination, arguments: Bundle?
     ) {
-        fab.tag = destination.id == R.id.nav_home
-        if (fab.tag == true) fab.show() else fab.hide()
+        val isHome = destination.id == R.id.nav_home
+        val isFreezer = destination.id == R.id.nav_freezer
+        val isFreezerList = destination.id == R.id.freezerListFragment
+        val showPrimaryNavigation = destination.id != R.id.freezerListFragment
+        findViewById<View>(R.id.bottom_nav)?.isVisible = showPrimaryNavigation
+        findViewById<View>(R.id.nav_rail)?.isVisible = showPrimaryNavigation
+        fab.tag = isHome
+        if (isHome || isFreezer || isFreezerList) fab.show() else fab.hide()
     }
 }

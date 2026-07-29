@@ -10,6 +10,6 @@ class DeviceAdminReceiver : DeviceAdminReceiver() {
     override fun onEnabled(context: Context, intent: Intent) {
         super.onEnabled(context, intent)
         HPolicy.enableBackupService()
-        HPolicy.setOrganizationName(context.getString(R.string.app_name))
+        HPolicy.setOrganizationName(context.getString(R.string.brand_name))
     }
 }
