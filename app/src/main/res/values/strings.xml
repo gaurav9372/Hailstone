@@ -46,6 +46,9 @@
     <string name="action_delete">Delete</string>
     <string name="action_delete_list">Delete list?</string>
     <string name="action_manage_apps">Add or remove apps</string>
+    <string name="action_unfreeze_all_remove">Unfreeze all &amp; remove</string>
+    <string name="action_unfreeze_remove_list_app">Unfreeze and remove</string>
+    <string name="action_multi_select">Multi Select</string>
     <string name="list_name">List name</string>
     <string name="msg_no_freezer_lists">No lists yet. Create one to organize apps.</string>
     <string name="msg_no_apps_in_list">No apps in this list yet.</string>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_selection_freeze"
+        android:icon="@drawable/ic_round_frozen"
+        android:title="@string/action_freeze"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_selection_unfreeze"
+        android:icon="@drawable/ic_round_unfrozen"
+        android:title="@string/action_unfreeze"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_selection_unfreeze_remove"
+        android:icon="@drawable/ic_outline_remove_circle"
+        android:title="@string/action_unfreeze_remove_list_app"
+        app:showAsAction="always" />
+</menu>

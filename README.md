@@ -15,6 +15,10 @@ Hailstone will evolve through focused UI and UX improvements. This section will 
 - **Custom Freezer lists** — create persistent named app lists and freeze only the apps in the opened list.
 - **Focused list management** — add, edit, rename, or delete lists from dedicated screens without the primary navigation bar.
 - **Searchable app picker** — add or remove apps with icons, selected-first ordering, search, and user/system or frozen/unfrozen filters.
+- **List-level controls** — freeze, unfreeze, or unfreeze and remove every app in an opened list.
+- **App actions and multi-select** — long-press an app for individual actions or select multiple apps for batch freeze, unfreeze, and removal from a dedicated contextual toolbar.
+- **In-list search** — find apps inside an opened list using the same fuzzy, package-name, Nine-key, and Pinyin matching as Home.
+- **Responsive frozen-state styling** — list icons and labels update immediately when app freeze state changes.
 - **Hailstone branding** — the app now uses the Hailstone name throughout its primary user-facing surfaces.
 
 ## Project direction

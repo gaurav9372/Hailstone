@@ -10,8 +10,13 @@ import com.aistra.hail.app.HailData
 import com.aistra.hail.databinding.ItemHomeListBinding
 import com.aistra.hail.utils.AppIconCache
 import com.aistra.hail.utils.HPackages.myUserId
+import com.google.android.material.color.MaterialColors
 
-class FreezerAppsAdapter : ListAdapter<AppInfo, FreezerAppsAdapter.ViewHolder>(Diff) {
+class FreezerAppsAdapter(
+    private val selectedPackages: Set<String>,
+    private val onItemClick: (AppInfo) -> Unit,
+    private val onItemLongClick: (AppInfo) -> Unit
+) : ListAdapter<AppInfo, FreezerAppsAdapter.ViewHolder>(Diff) {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = ViewHolder(
         ItemHomeListBinding.inflate(LayoutInflater.from(parent.context), parent, false)
     )
@@ -20,19 +25,39 @@ class FreezerAppsAdapter : ListAdapter<AppInfo, FreezerAppsAdapter.ViewHolder>(D
         holder.bind(getItem(position))
     }
 
-    class ViewHolder(private val binding: ItemHomeListBinding) : RecyclerView.ViewHolder(binding.root) {
+    inner class ViewHolder(private val binding: ItemHomeListBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(info: AppInfo) {
             binding.run {
-                appName.text = info.name
+                val frozen = info.state == AppInfo.State.FROZEN
+                appName.text = buildString {
+                    if (!HailData.grayscaleIcon && frozen) append("\u2744\uFE0F")
+                    append(info.name)
+                }
+                appName.isEnabled = !HailData.grayscaleIcon || !frozen
+                if (info.packageName in selectedPackages) {
+                    appName.setTextColor(
+                        MaterialColors.getColor(appName, androidx.appcompat.R.attr.colorPrimary)
+                    )
+                } else {
+                    appName.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyLarge)
+                }
                 info.applicationInfo?.let {
                     AppIconCache.loadIconBitmapAsync(
                         root.context,
                         it,
                         myUserId,
                         appIcon,
-                        HailData.grayscaleIcon && info.state == AppInfo.State.FROZEN
+                        HailData.grayscaleIcon && frozen
                     )
-                } ?: appIcon.setImageDrawable(root.context.packageManager.defaultActivityIcon)
+                } ?: appIcon.apply {
+                    setImageDrawable(root.context.packageManager.defaultActivityIcon)
+                    colorFilter = null
+                }
+                root.setOnLongClickListener {
+                    onItemLongClick(info)
+                    true
+                }
+                root.setOnClickListener { onItemClick(info) }
             }
         }
     }

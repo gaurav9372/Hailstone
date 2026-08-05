@@ -13,6 +13,16 @@
         android:theme="@style/Theme.Hail.AppBarOverlay">
 
         <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/contextual_toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?actionBarSize"
+            android:background="@color/contextual_bar_background"
+            android:elevation="8dp"
+            android:visibility="gone"
+            app:navigationIcon="@drawable/ic_outline_close"
+            app:titleTextColor="@color/contextual_bar_foreground" />
+
+        <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?actionBarSize"
