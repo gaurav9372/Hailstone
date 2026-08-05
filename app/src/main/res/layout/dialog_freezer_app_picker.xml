@@ -45,11 +45,33 @@
 
     </LinearLayout>
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="end|center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="@dimen/padding_medium">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/select_all_button"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/action_select_all_picker" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/unselect_all_button"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/action_unselect_all" />
+
+    </LinearLayout>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_view"
         android:layout_width="match_parent"
         android:layout_height="420dp"
-        android:layout_marginTop="@dimen/padding_small"
         android:clipToPadding="false"
         android:paddingBottom="@dimen/padding_small" />
 

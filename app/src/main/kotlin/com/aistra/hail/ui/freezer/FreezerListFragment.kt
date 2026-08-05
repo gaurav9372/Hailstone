@@ -16,7 +16,9 @@ import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.PopupWindow
 import androidx.appcompat.widget.SearchView
+import androidx.appcompat.app.AlertDialog
 import androidx.core.view.MenuHost
+import androidx.core.content.ContextCompat
 import androidx.core.view.MenuProvider
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -73,6 +75,7 @@ class FreezerListFragment : MainFragment(), MenuProvider {
     private var showSystemApps = true
     private var showFrozenApps = true
     private var showUnfrozenApps = true
+    private var listIsEmpty = true
     private var syncingQuickFilters = false
     private var updateAppsJob: Job? = null
     private val contextualToolbar: MaterialToolbar
@@ -183,7 +186,10 @@ class FreezerListFragment : MainFragment(), MenuProvider {
                 showAppPicker()
             }
         }
-        activity.freezeFab.setOnClickListener { setListFrozen(true) }
+        activity.freezeFab.setOnClickListener {
+            if (listIsEmpty) HUI.showToast(R.string.msg_add_apps_first)
+            else setListFrozen(true)
+        }
         updateApps()
     }
 
@@ -225,7 +231,13 @@ class FreezerListFragment : MainFragment(), MenuProvider {
     }
 
     private fun updateFabVisibility(isEmpty: Boolean) {
-        if (isEmpty) activity.freezeFab.hide() else activity.freezeFab.show()
+        listIsEmpty = isEmpty
+        binding.quickFilterRow.isVisible = !isEmpty
+        activity.freezeFab.show()
+        activity.freezeFab.animate()
+            .alpha(if (isEmpty) 0.38f else 1f)
+            .setDuration(150L)
+            .start()
     }
 
     private fun setListFrozen(frozen: Boolean, removeAfter: Boolean = false) {
@@ -422,9 +434,10 @@ class FreezerListFragment : MainFragment(), MenuProvider {
         var showUnfrozenApps = true
         if (!showUserApps && !showSystemApps) showUserApps = true
         lateinit var pickerAdapter: FreezerAppPickerAdapter
+        var visibleApps: List<ApplicationInfo> = emptyList()
 
         fun refreshPicker() {
-            val visibleApps = apps.filter { app ->
+            visibleApps = apps.filter { app ->
                 val isSystem = app.flags and ApplicationInfo.FLAG_SYSTEM == ApplicationInfo.FLAG_SYSTEM
                 val isFrozen = AppManager.isAppFrozen(app.packageName)
                 val matchesType = (showUserApps && !isSystem) || (showSystemApps && isSystem)
@@ -437,7 +450,9 @@ class FreezerListFragment : MainFragment(), MenuProvider {
                 compareBy<ApplicationInfo> { if (it.packageName in selectedPackages) 0 else 1 }
                     .thenBy { it.loadLabel(activity.packageManager).toString().lowercase() }
             )
-            pickerAdapter.submitList(visibleApps)
+            pickerAdapter.submitList(visibleApps) {
+                pickerAdapter.notifyItemRangeChanged(0, pickerAdapter.itemCount)
+            }
         }
 
         pickerAdapter = FreezerAppPickerAdapter(selectedPackages, ::refreshPicker)
@@ -448,6 +463,14 @@ class FreezerListFragment : MainFragment(), MenuProvider {
         refreshPicker()
         picker.search.doAfterTextChanged { editable ->
             query = editable?.toString()?.trim().orEmpty()
+            refreshPicker()
+        }
+        picker.selectAllButton.setOnClickListener {
+            selectedPackages.addAll(visibleApps.map { it.packageName })
+            refreshPicker()
+        }
+        picker.unselectAllButton.setOnClickListener {
+            selectedPackages.removeAll(visibleApps.map { it.packageName }.toSet())
             refreshPicker()
         }
         picker.filterButton.setOnClickListener {
@@ -512,7 +535,7 @@ class FreezerListFragment : MainFragment(), MenuProvider {
         input.inputLayout.setHint(R.string.list_name)
         input.editText.setText(list.name)
         input.editText.setSelection(list.name.length)
-        MaterialAlertDialogBuilder(activity)
+        val dialog = MaterialAlertDialogBuilder(activity)
             .setTitle(R.string.action_edit)
             .setView(input.root)
             .setPositiveButton(android.R.string.ok) { _, _ ->
@@ -524,7 +547,11 @@ class FreezerListFragment : MainFragment(), MenuProvider {
                 activity.supportActionBar?.title = name
             }
             .setNegativeButton(android.R.string.cancel, null)
+            .setNeutralButton(R.string.action_delete) { _, _ -> showDeleteDialog() }
             .show()
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(
+            ContextCompat.getColor(requireContext(), R.color.md_theme_error)
+        )
     }
 
     private fun showDeleteDialog() {
@@ -567,10 +594,8 @@ class FreezerListFragment : MainFragment(), MenuProvider {
         if (isAllFrozenList) {
             menu.findItem(R.id.action_edit_list).isVisible = false
             menu.findItem(R.id.action_unfreeze_remove_list).isVisible = false
-            menu.findItem(R.id.action_delete_list).isVisible = false
         } else if (isNoCustomList) {
             menu.findItem(R.id.action_edit_list).isVisible = false
-            menu.findItem(R.id.action_delete_list).isVisible = false
         }
     }
 
@@ -593,10 +618,6 @@ class FreezerListFragment : MainFragment(), MenuProvider {
         }
         R.id.action_unfreeze_remove_list -> {
             setListFrozen(false, removeAfter = true)
-            true
-        }
-        R.id.action_delete_list -> {
-            showDeleteDialog()
             true
         }
         else -> false

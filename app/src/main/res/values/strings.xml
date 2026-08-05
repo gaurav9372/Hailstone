@@ -64,6 +64,7 @@
     <string name="list_no_custom">No Custom List</string>
     <string name="msg_no_freezer_lists">No lists yet. Create one to organize apps.</string>
     <string name="msg_no_apps_in_list">No apps in this list yet.</string>
+    <string name="msg_add_apps_first">Add apps first</string>
     <string name="msg_delete_list">Delete “%1$s”? This will not uninstall its apps.</string>
     <string name="action_view_as">Change view</string>
     <string name="view_grid">Grid view</string>
@@ -156,6 +157,8 @@
     <string name="action_unfreeze_tag">Unfreeze tag</string>
     <string name="icon_pack">Icon pack</string>
     <string name="action_select_all">Select all</string>
+    <string name="action_select_all_picker">Select All</string>
+    <string name="action_unselect_all">Unselect All</string>
     <string name="action_terminal">Terminal</string>
     <string name="mode_dhizuku_hide">Dhizuku - Hide</string>
     <string name="mode_dhizuku_suspend">Dhizuku - Suspend</string>

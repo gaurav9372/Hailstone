@@ -73,7 +73,7 @@
                 android:layout_width="96dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="@dimen/padding_medium"
-                android:gravity="center"
+                android:gravity="end"
                 android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
