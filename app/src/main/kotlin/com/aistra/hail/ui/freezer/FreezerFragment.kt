@@ -36,7 +36,9 @@ class FreezerFragment : MainFragment() {
                     bundleOf("listId" to list.id, "listName" to list.name)
                 )
             },
-            onLongClick = ::showListActions
+            onLongClick = { list ->
+                if (list.id != FreezerData.ID_ALL_FROZEN) showListActions(list)
+            }
         )
         binding.recyclerView.apply {
             layoutManager = LinearLayoutManager(activity)
@@ -59,7 +61,8 @@ class FreezerFragment : MainFragment() {
     }
 
     private fun updateLists() {
-        val lists = FreezerData.lists.map { it.copy(packages = it.packages.toMutableList()) }
+        val lists = listOf(FreezerData.allFrozenList) +
+            FreezerData.lists.map { it.copy(packages = it.packages.toMutableList()) }
         listAdapter.submitList(lists)
         binding.empty.isVisible = lists.isEmpty()
     }

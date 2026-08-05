@@ -10,6 +10,29 @@
         app:showAsAction="always|collapseActionView"
         tools:ignore="AlwaysShowAction" />
     <item
+        android:id="@+id/action_filter"
+        android:icon="@drawable/ic_outline_filter"
+        android:title="@string/filter_by"
+        app:showAsAction="always"
+        tools:ignore="AlwaysShowAction" />
+    <item
+        android:id="@+id/action_view"
+        android:icon="@drawable/ic_outline_view_module"
+        android:title="@string/action_view_as"
+        app:showAsAction="always"
+        tools:ignore="AlwaysShowAction">
+        <menu>
+            <group android:checkableBehavior="single">
+                <item
+                    android:id="@+id/action_view_grid"
+                    android:title="@string/view_grid" />
+                <item
+                    android:id="@+id/action_view_list"
+                    android:title="@string/view_list" />
+            </group>
+        </menu>
+    </item>
+    <item
         android:id="@+id/action_manage_apps"
         android:icon="@drawable/ic_outline_add"
         android:title="@string/action_manage_apps"

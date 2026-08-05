@@ -26,6 +26,7 @@ import androidx.core.view.updatePadding
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.aistra.hail.R
 import com.aistra.hail.app.AppInfo
@@ -35,6 +36,7 @@ import com.aistra.hail.app.FreezerList
 import com.aistra.hail.app.HailData
 import com.aistra.hail.databinding.DialogFreezerAppPickerBinding
 import com.aistra.hail.databinding.DialogInputBinding
+import com.aistra.hail.databinding.BottomSheetFreezerFilterBinding
 import com.aistra.hail.databinding.FragmentFreezerListBinding
 import com.aistra.hail.databinding.PopupFreezerAppFilterBinding
 import com.aistra.hail.extensions.applyDefaultInsetter
@@ -50,16 +52,22 @@ import com.aistra.hail.utils.NineKeySearch
 import com.aistra.hail.utils.PinyinSearch
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.bottomsheet.BottomSheetDialog
 
 class FreezerListFragment : MainFragment(), MenuProvider {
     private var _binding: FragmentFreezerListBinding? = null
     private val binding get() = _binding!!
     private val listId get() = requireArguments().getString("listId").orEmpty()
+    private val isAllFrozenList get() = listId == FreezerData.ID_ALL_FROZEN
     private val freezerList: FreezerList? get() = FreezerData.findList(listId)
     private val selectedPackages = mutableSetOf<String>()
     private val appsAdapter = FreezerAppsAdapter(selectedPackages, ::onAppClick, ::onAppLongClick)
     private var selectionMode = false
     private var query = ""
+    private var showUserApps = true
+    private var showSystemApps = true
+    private var showFrozenApps = true
+    private var showUnfrozenApps = true
     private val contextualToolbar: MaterialToolbar
         get() = activity.findViewById(R.id.contextual_toolbar)
     private val pageToolbar: MaterialToolbar
@@ -71,14 +79,35 @@ class FreezerListFragment : MainFragment(), MenuProvider {
         (requireActivity() as MenuHost).addMenuProvider(this, viewLifecycleOwner, Lifecycle.State.RESUMED)
         _binding = FragmentFreezerListBinding.inflate(inflater, container, false)
         binding.recyclerView.apply {
-            layoutManager = LinearLayoutManager(activity)
             adapter = appsAdapter
             applyDefaultInsetter { paddingRelative(isRtl, bottom = isLandscape) }
         }
+        applyAppLayout(HailData.freezerListView)
         applyNonEdgeToEdgeBottomInset()
         activity.appbar.setLiftOnScrollTargetView(binding.recyclerView)
         updateApps()
         return binding.root
+    }
+
+    private fun applyAppLayout(listView: Boolean) {
+        appsAdapter.listView = listView
+        binding.recyclerView.layoutManager = if (listView) {
+            LinearLayoutManager(activity)
+        } else {
+            GridLayoutManager(
+                activity,
+                resources.getInteger(
+                    if (HailData.compactIcon) R.integer.home_span_compact else R.integer.home_span
+                )
+            )
+        }
+    }
+
+    private fun setAppLayout(listView: Boolean) {
+        HailData.freezerListView = listView
+        applyAppLayout(listView)
+        pageToolbar.menu.findItem(R.id.action_view_grid)?.isChecked = !listView
+        pageToolbar.menu.findItem(R.id.action_view_list)?.isChecked = listView
     }
 
     private fun applyNonEdgeToEdgeBottomInset() {
@@ -109,11 +138,18 @@ class FreezerListFragment : MainFragment(), MenuProvider {
 
     private fun updateApps() {
         val apps = freezerList?.packages.orEmpty().map { AppInfo(it) }.filter {
-            query.isEmpty() ||
+            val isSystem = it.applicationInfo?.let { app ->
+                app.flags and ApplicationInfo.FLAG_SYSTEM == ApplicationInfo.FLAG_SYSTEM
+            } ?: false
+            val matchesType = (showUserApps && !isSystem) || (showSystemApps && isSystem)
+            val isFrozen = it.state == AppInfo.State.FROZEN
+            val matchesState = (showFrozenApps && isFrozen) || (showUnfrozenApps && !isFrozen)
+            val matchesQuery = query.isEmpty() ||
                 (HailData.nineKeySearch && NineKeySearch.search(query, it.packageName, it.name.toString())) ||
                 FuzzySearch.search(it.packageName, query) ||
                 FuzzySearch.search(it.name.toString(), query) ||
                 PinyinSearch.searchPinyinAll(it.name.toString(), query)
+            matchesType && matchesState && matchesQuery
         }.sortedBy { it.name.toString().lowercase() }
         appsAdapter.submitList(apps) {
             appsAdapter.notifyItemRangeChanged(0, appsAdapter.itemCount)
@@ -133,6 +169,7 @@ class FreezerListFragment : MainFragment(), MenuProvider {
 
     private fun setAppsFrozen(apps: List<AppInfo>, frozen: Boolean, removeAfter: Boolean = false) {
         if (apps.isEmpty()) return
+        val shouldRemove = removeAfter && !isAllFrozenList
         if (HailData.workingMode == HailData.MODE_DEFAULT) {
             MaterialAlertDialogBuilder(activity)
                 .setMessage(R.string.msg_guide)
@@ -152,14 +189,14 @@ class FreezerListFragment : MainFragment(), MenuProvider {
         }
         val appsToChange = apps.filter { AppManager.isAppFrozen(it.packageName) != frozen }
         if (appsToChange.isEmpty()) {
-            if (removeAfter) removeUnfrozenApps(apps)
+            if (shouldRemove) removeUnfrozenApps(apps)
             else HUI.showToast(if (frozen) R.string.msg_freeze else R.string.msg_unfreeze, "0")
             return
         }
         when (val result = AppManager.setListFrozen(frozen, *appsToChange.toTypedArray())) {
             null -> HUI.showToast(R.string.permission_denied)
             else -> {
-                if (removeAfter) removeUnfrozenApps(apps) else updateApps()
+                if (shouldRemove) removeUnfrozenApps(apps) else updateApps()
                 HUI.showToast(if (frozen) R.string.msg_freeze else R.string.msg_unfreeze, result)
             }
         }
@@ -173,17 +210,28 @@ class FreezerListFragment : MainFragment(), MenuProvider {
     }
 
     private fun showAppActions(info: AppInfo) {
+        val actions = if (isAllFrozenList) {
+            arrayOf(
+                getString(R.string.action_freeze),
+                getString(R.string.action_unfreeze),
+                getString(R.string.action_multi_select)
+            )
+        } else {
+            arrayOf(
+                getString(R.string.action_freeze),
+                getString(R.string.action_unfreeze),
+                getString(R.string.action_unfreeze_remove_list_app),
+                getString(R.string.action_multi_select)
+            )
+        }
         MaterialAlertDialogBuilder(activity)
             .setTitle(info.name)
-            .setItems(
-                arrayOf(
-                    getString(R.string.action_freeze),
-                    getString(R.string.action_unfreeze),
-                    getString(R.string.action_unfreeze_remove_list_app),
-                    getString(R.string.action_multi_select)
-                )
-            ) { _, which ->
-                when (which) {
+            .setItems(actions) { _, which ->
+                if (isAllFrozenList) when (which) {
+                    0 -> setAppsFrozen(listOf(info), true)
+                    1 -> setAppsFrozen(listOf(info), false)
+                    2 -> startMultiSelect(info)
+                } else when (which) {
                     0 -> setAppsFrozen(listOf(info), true)
                     1 -> setAppsFrozen(listOf(info), false)
                     2 -> setAppsFrozen(listOf(info), false, removeAfter = true)
@@ -230,6 +278,7 @@ class FreezerListFragment : MainFragment(), MenuProvider {
         contextualToolbar.apply {
             menu.clear()
             inflateMenu(R.menu.menu_freezer_selection)
+            menu.findItem(R.id.action_selection_unfreeze_remove).isVisible = !isAllFrozenList
             setNavigationIcon(R.drawable.ic_outline_close)
             setNavigationOnClickListener { closeSelectionBar() }
             setOnMenuItemClickListener { item ->
@@ -264,6 +313,7 @@ class FreezerListFragment : MainFragment(), MenuProvider {
     }
 
     private fun showAppPicker() {
+        if (isAllFrozenList) return
         val list = freezerList ?: return
         val apps = HPackages.getInstalledApplications()
             .filter { it.flags and ApplicationInfo.FLAG_INSTALLED == ApplicationInfo.FLAG_INSTALLED }
@@ -351,6 +401,7 @@ class FreezerListFragment : MainFragment(), MenuProvider {
     }
 
     private fun showEditDialog() {
+        if (isAllFrozenList) return
         val list = freezerList ?: return
         val input = DialogInputBinding.inflate(layoutInflater)
         input.inputLayout.setHint(R.string.list_name)
@@ -371,7 +422,40 @@ class FreezerListFragment : MainFragment(), MenuProvider {
             .show()
     }
 
+    private fun showListFilterSheet() {
+        val sheet = BottomSheetFreezerFilterBinding.inflate(layoutInflater)
+        sheet.appTypeGroup.check(
+            when {
+                showUserApps && showSystemApps -> R.id.all_apps
+                showSystemApps -> R.id.system_apps
+                else -> R.id.user_apps
+            }
+        )
+        sheet.frozenApps.isChecked = showFrozenApps
+        sheet.unfrozenApps.isChecked = showUnfrozenApps
+
+        sheet.appTypeGroup.setOnCheckedChangeListener { _, checkedId ->
+            showUserApps = checkedId != R.id.system_apps
+            showSystemApps = checkedId != R.id.user_apps
+            updateApps()
+        }
+        sheet.frozenApps.setOnCheckedChangeListener { _, checked ->
+            showFrozenApps = checked
+            updateApps()
+        }
+        sheet.unfrozenApps.setOnCheckedChangeListener { _, checked ->
+            showUnfrozenApps = checked
+            updateApps()
+        }
+
+        BottomSheetDialog(requireContext()).apply {
+            setContentView(sheet.root)
+            show()
+        }
+    }
+
     private fun showDeleteDialog() {
+        if (isAllFrozenList) return
         val list = freezerList ?: return
         MaterialAlertDialogBuilder(activity)
             .setTitle(R.string.action_delete_list)
@@ -386,6 +470,8 @@ class FreezerListFragment : MainFragment(), MenuProvider {
 
     override fun onCreateMenu(menu: Menu, inflater: MenuInflater) {
         inflater.inflate(R.menu.menu_freezer_list, menu)
+        menu.findItem(R.id.action_view_grid).isChecked = !HailData.freezerListView
+        menu.findItem(R.id.action_view_list).isChecked = HailData.freezerListView
         val searchView = menu.findItem(R.id.action_search).actionView as SearchView
         if (HailData.nineKeySearch) {
             searchView.findViewById<EditText>(androidx.appcompat.R.id.search_src_text).inputType =
@@ -402,7 +488,29 @@ class FreezerListFragment : MainFragment(), MenuProvider {
         })
     }
 
+    override fun onPrepareMenu(menu: Menu) {
+        menu.findItem(R.id.action_view_grid).isChecked = !HailData.freezerListView
+        menu.findItem(R.id.action_view_list).isChecked = HailData.freezerListView
+        if (!isAllFrozenList) return
+        menu.findItem(R.id.action_manage_apps).isVisible = false
+        menu.findItem(R.id.action_edit_list).isVisible = false
+        menu.findItem(R.id.action_unfreeze_remove_list).isVisible = false
+        menu.findItem(R.id.action_delete_list).isVisible = false
+    }
+
     override fun onMenuItemSelected(item: MenuItem): Boolean = when (item.itemId) {
+        R.id.action_filter -> {
+            showListFilterSheet()
+            true
+        }
+        R.id.action_view_grid -> {
+            setAppLayout(false)
+            true
+        }
+        R.id.action_view_list -> {
+            setAppLayout(true)
+            true
+        }
         R.id.action_manage_apps -> {
             showAppPicker()
             true

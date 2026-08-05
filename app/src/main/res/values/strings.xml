@@ -50,6 +50,7 @@
     <string name="action_unfreeze_remove_list_app">Unfreeze and remove</string>
     <string name="action_multi_select">Multi Select</string>
     <string name="list_name">List name</string>
+    <string name="list_all_frozen">All Frozen</string>
     <string name="msg_no_freezer_lists">No lists yet. Create one to organize apps.</string>
     <string name="msg_no_apps_in_list">No apps in this list yet.</string>
     <string name="msg_delete_list">Delete “%1$s”? This will not uninstall its apps.</string>
@@ -80,6 +81,7 @@
 \nFrozen apps will remain frozen after removal, please make sure you have unfrozen the important apps.</string>
     <string name="tap_to_select">Tap to multiselect</string>
     <string name="filter_by">Filter</string>
+    <string name="filter_all_apps">All</string>
     <string name="filter_user_apps">User</string>
     <string name="filter_system_apps">System</string>
     <string name="filter_frozen_apps">Frozen</string>

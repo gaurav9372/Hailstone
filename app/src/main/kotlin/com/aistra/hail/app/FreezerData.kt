@@ -1,7 +1,9 @@
 package com.aistra.hail.app
 
 import com.aistra.hail.HailApp.Companion.app
+import com.aistra.hail.R
 import com.aistra.hail.utils.HFiles
+import com.aistra.hail.utils.HPackages
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -12,6 +14,7 @@ data class FreezerList(
 )
 
 object FreezerData {
+    const val ID_ALL_FROZEN = "all_frozen"
     private const val KEY_ID = "id"
     private const val KEY_NAME = "name"
     private const val KEY_PACKAGES = "packages"
@@ -45,9 +48,20 @@ object FreezerData {
         save()
     }
 
-    fun findList(id: String): FreezerList? = lists.firstOrNull { it.id == id }
+    val allFrozenList: FreezerList
+        get() = FreezerList(
+            id = ID_ALL_FROZEN,
+            name = app.getString(R.string.list_all_frozen),
+            packages = HPackages.getInstalledApplications()
+                .map { it.packageName }
+                .filterTo(mutableListOf()) { AppManager.isAppFrozen(it) }
+        )
+
+    fun findList(id: String): FreezerList? =
+        if (id == ID_ALL_FROZEN) allFrozenList else lists.firstOrNull { it.id == id }
 
     fun deleteList(id: String) {
+        if (id == ID_ALL_FROZEN) return
         lists.removeAll { it.id == id }
         save()
     }

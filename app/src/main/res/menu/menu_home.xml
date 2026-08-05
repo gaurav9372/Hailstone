@@ -24,11 +24,9 @@
             <group android:checkableBehavior="single">
                 <item
                         android:id="@+id/action_view_grid"
-                        android:checkable="true"
                         android:title="@string/view_grid"/>
                 <item
                         android:id="@+id/action_view_list"
-                        android:checkable="true"
                         android:title="@string/view_list"/>
             </group>
         </menu>
