@@ -95,7 +95,6 @@ object HailData {
     const val ICON_PACK = "icon_pack"
     const val GRAYSCALE_ICON = "grayscale_icon"
     const val COMPACT_ICON = "compact_icon"
-    private const val HOME_LIST_VIEW = "home_list_view"
     private const val FREEZER_LIST_VIEW = "freezer_list_view"
     const val SYNTHESIZE_ADAPTIVE_ICONS = "synthesize_adaptive_icons"
     const val HOME_FONT_SIZE = "home_font_size_f"
@@ -144,9 +143,6 @@ object HailData {
     val iconPack get() = sp.getString(ICON_PACK, ACTION_NONE)!!
     val grayscaleIcon get() = sp.getBoolean(GRAYSCALE_ICON, true)
     val compactIcon get() = sp.getBoolean(COMPACT_ICON, false)
-    var homeListView
-        get() = sp.getBoolean(HOME_LIST_VIEW, false)
-        set(value) = sp.edit { putBoolean(HOME_LIST_VIEW, value) }
     var freezerListView
         get() = sp.getBoolean(FREEZER_LIST_VIEW, true)
         set(value) = sp.edit { putBoolean(FREEZER_LIST_VIEW, value) }

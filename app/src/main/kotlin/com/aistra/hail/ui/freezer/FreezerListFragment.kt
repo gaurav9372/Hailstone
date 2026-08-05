@@ -210,6 +210,7 @@ class FreezerListFragment : MainFragment(), MenuProvider {
     }
 
     private fun showAppActions(info: AppInfo) {
+        val isFrozen = AppManager.isAppFrozen(info.packageName)
         val actions = if (isAllFrozenList) {
             arrayOf(
                 getString(R.string.action_freeze),
@@ -220,7 +221,10 @@ class FreezerListFragment : MainFragment(), MenuProvider {
             arrayOf(
                 getString(R.string.action_freeze),
                 getString(R.string.action_unfreeze),
-                getString(R.string.action_unfreeze_remove_list_app),
+                getString(
+                    if (isFrozen) R.string.action_unfreeze_remove_list_app
+                    else R.string.action_remove_list_app
+                ),
                 getString(R.string.action_multi_select)
             )
         }
@@ -234,7 +238,11 @@ class FreezerListFragment : MainFragment(), MenuProvider {
                 } else when (which) {
                     0 -> setAppsFrozen(listOf(info), true)
                     1 -> setAppsFrozen(listOf(info), false)
-                    2 -> setAppsFrozen(listOf(info), false, removeAfter = true)
+                    2 -> if (isFrozen) {
+                        setAppsFrozen(listOf(info), false, removeAfter = true)
+                    } else {
+                        removeUnfrozenApps(listOf(info))
+                    }
                     3 -> startMultiSelect(info)
                 }
             }

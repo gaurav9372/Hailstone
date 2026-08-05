@@ -3,12 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/mobile_navigation"
-    app:startDestination="@+id/nav_home">
-
-    <fragment
-        android:id="@+id/nav_home"
-        android:name="com.aistra.hail.ui.home.HomeFragment"
-        android:label="@string/brand_name" />
+    app:startDestination="@+id/nav_freezer">
 
     <fragment
         android:id="@+id/nav_freezer"
@@ -30,11 +25,6 @@
             android:name="listName"
             app:argType="string" />
     </fragment>
-
-    <fragment
-        android:id="@+id/nav_apps"
-        android:name="com.aistra.hail.ui.apps.AppsFragment"
-        android:label="@string/title_apps" />
 
     <fragment
         android:id="@+id/nav_settings"

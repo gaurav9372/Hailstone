@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity(), NavController.OnDestinationChangedList
         navController = navHostFragment.navController
         navController.addOnDestinationChangedListener(this@MainActivity)
         val appBarConfiguration = AppBarConfiguration.Builder(
-            R.id.nav_home, R.id.nav_freezer, R.id.nav_apps, R.id.nav_settings, R.id.nav_about
+            R.id.nav_freezer, R.id.nav_settings, R.id.nav_about
         ).build()
         setupActionBarWithNavController(navController, appBarConfiguration)
         bottomNav?.setupWithNavController(navController)
@@ -111,13 +111,12 @@ class MainActivity : AppCompatActivity(), NavController.OnDestinationChangedList
     override fun onDestinationChanged(
         controller: NavController, destination: NavDestination, arguments: Bundle?
     ) {
-        val isHome = destination.id == R.id.nav_home
         val isFreezer = destination.id == R.id.nav_freezer
         val isFreezerList = destination.id == R.id.freezerListFragment
         val showPrimaryNavigation = destination.id != R.id.freezerListFragment
         findViewById<View>(R.id.bottom_nav)?.isVisible = showPrimaryNavigation
         findViewById<View>(R.id.nav_rail)?.isVisible = showPrimaryNavigation
-        fab.tag = isHome
-        if (isHome || isFreezer || isFreezerList) fab.show() else fab.hide()
+        fab.tag = isFreezer
+        if (isFreezer || isFreezerList) fab.show() else fab.hide()
     }
 }
