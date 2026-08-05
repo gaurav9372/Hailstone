@@ -6,11 +6,13 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.aistra.hail.R
 import com.aistra.hail.app.FreezerData
 import com.aistra.hail.app.FreezerList
+import com.aistra.hail.app.AppManager
 import com.aistra.hail.databinding.DialogInputBinding
 import com.aistra.hail.databinding.FragmentFreezerBinding
 import com.aistra.hail.extensions.applyDefaultInsetter
@@ -19,11 +21,16 @@ import com.aistra.hail.extensions.isRtl
 import com.aistra.hail.extensions.paddingRelative
 import com.aistra.hail.ui.main.MainFragment
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class FreezerFragment : MainFragment() {
     private var _binding: FragmentFreezerBinding? = null
     private val binding get() = _binding!!
     private lateinit var listAdapter: FreezerListAdapter
+    private var updateListsJob: Job? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -32,12 +39,12 @@ class FreezerFragment : MainFragment() {
         listAdapter = FreezerListAdapter(
             onClick = { list ->
                 findNavController().navigate(
-                    R.id.action_nav_freezer_to_freezerListFragment,
+                    R.id.action_nav_lists_to_freezerListFragment,
                     bundleOf("listId" to list.id, "listName" to list.name)
                 )
             },
             onLongClick = { list ->
-                if (list.id != FreezerData.ID_ALL_FROZEN) showListActions(list)
+                if (list.id != FreezerData.ID_NO_CUSTOM_LIST) showListActions(list)
             }
         )
         binding.recyclerView.apply {
@@ -54,6 +61,7 @@ class FreezerFragment : MainFragment() {
         activity.fab.apply {
             setIconResource(R.drawable.ic_outline_add)
             text = getString(R.string.action_new_list)
+            extend()
             setOnClickListener { showNameDialog() }
             setOnLongClickListener(null)
         }
@@ -61,10 +69,26 @@ class FreezerFragment : MainFragment() {
     }
 
     private fun updateLists() {
-        val lists = listOf(FreezerData.allFrozenList) +
-            FreezerData.lists.map { it.copy(packages = it.packages.toMutableList()) }
-        listAdapter.submitList(lists)
-        binding.empty.isVisible = lists.isEmpty()
+        val noCustomList = FreezerData.noCustomList
+        val lists = listOf(noCustomList.copy(packages = noCustomList.packages.toMutableList())) +
+            FreezerData.lists.filter { it.id != FreezerData.ID_NO_CUSTOM_LIST }
+                .map { it.copy(packages = it.packages.toMutableList()) }
+        updateListsJob?.cancel()
+        updateListsJob = lifecycleScope.launch {
+            val statuses = withContext(Dispatchers.IO) {
+                lists.map { list ->
+                    val frozenCount = list.packages.count(AppManager::isAppFrozen)
+                    FreezerListStatus(
+                        list = list,
+                        frozenCount = frozenCount,
+                        unfrozenCount = list.packages.size - frozenCount
+                    )
+                }
+            }
+            if (_binding == null) return@launch
+            listAdapter.submitList(statuses)
+            binding.empty.isVisible = statuses.isEmpty()
+        }
     }
 
     private fun showNameDialog(existing: FreezerList? = null) {
@@ -108,6 +132,7 @@ class FreezerFragment : MainFragment() {
     }
 
     override fun onDestroyView() {
+        updateListsJob?.cancel()
         super.onDestroyView()
         _binding = null
     }

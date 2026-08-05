@@ -15,6 +15,7 @@ import com.aistra.hail.app.HailData
 import com.aistra.hail.utils.AppIconCache
 import com.aistra.hail.utils.HPackages.myUserId
 import com.google.android.material.color.MaterialColors
+import kotlinx.coroutines.Job
 
 class FreezerAppsAdapter(
     private val selectedPackages: Set<String>,
@@ -42,11 +43,20 @@ class FreezerAppsAdapter(
         holder.bind(getItem(position))
     }
 
+    override fun onViewRecycled(holder: ViewHolder) {
+        holder.recycle()
+        super.onViewRecycled(holder)
+    }
+
     inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         private val appIcon = view.findViewById<ImageView>(R.id.app_icon)
         private val appName = view.findViewById<TextView>(R.id.app_name)
+        private var iconJob: Job? = null
 
         fun bind(info: AppInfo) {
+            iconJob?.cancel()
+            appIcon.setImageDrawable(itemView.context.packageManager.defaultActivityIcon)
+            appIcon.colorFilter = null
             val frozen = info.state == AppInfo.State.FROZEN
             appName.apply {
                 text = buildString {
@@ -64,7 +74,7 @@ class FreezerAppsAdapter(
                 }
             }
             info.applicationInfo?.let {
-                AppIconCache.loadIconBitmapAsync(
+                iconJob = AppIconCache.loadIconBitmapAsync(
                     itemView.context,
                     it,
                     myUserId,
@@ -80,6 +90,11 @@ class FreezerAppsAdapter(
                 true
             }
             itemView.setOnClickListener { onItemClick(info) }
+        }
+
+        fun recycle() {
+            iconJob?.cancel()
+            iconJob = null
         }
     }
 

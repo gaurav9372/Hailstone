@@ -36,13 +36,6 @@
         <item>@string/theme_light</item>
         <item>@string/theme_dark</item>
     </string-array>
-    <string-array name="donate_payment_entries">
-        <item>@string/donate_alipay</item>
-        <item>@string/donate_wechat</item>
-        <item>@string/donate_bilibili</item>
-        <item>@string/donate_liberapay</item>
-        <item>@string/donate_paypal</item>
-    </string-array>
     <string-array name="pin_shortcut_entries">
         <item>@string/action_freeze_tag</item>
         <item>@string/action_unfreeze_tag</item>

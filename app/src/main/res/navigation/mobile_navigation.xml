@@ -1,16 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/mobile_navigation"
     app:startDestination="@+id/nav_freezer">
 
     <fragment
         android:id="@+id/nav_freezer"
-        android:name="com.aistra.hail.ui.freezer.FreezerFragment"
+        android:name="com.aistra.hail.ui.freezer.FreezerListFragment"
         android:label="@string/title_freezer">
+        <argument
+            android:name="listId"
+            android:defaultValue="all_frozen"
+            app:argType="string" />
+        <argument
+            android:name="listName"
+            android:defaultValue="Freezer"
+            app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/nav_lists"
+        android:name="com.aistra.hail.ui.freezer.FreezerFragment"
+        android:label="@string/title_lists">
         <action
-            android:id="@+id/action_nav_freezer_to_freezerListFragment"
+            android:id="@+id/action_nav_lists_to_freezerListFragment"
             app:destination="@id/freezerListFragment" />
     </fragment>
 
@@ -29,11 +42,14 @@
     <fragment
         android:id="@+id/nav_settings"
         android:name="com.aistra.hail.ui.settings.SettingsFragment"
-        android:label="@string/title_settings" />
+        android:label="@string/title_settings">
+        <action
+            android:id="@+id/action_nav_settings_to_aboutFragment"
+            app:destination="@id/aboutFragment" />
+    </fragment>
 
     <fragment
-        android:id="@+id/nav_about"
+        android:id="@+id/aboutFragment"
         android:name="com.aistra.hail.ui.about.AboutFragment"
-        android:label="@string/title_about"
-        tools:layout="@layout/fragment_about" />
+        android:label="@string/title_about" />
 </navigation>

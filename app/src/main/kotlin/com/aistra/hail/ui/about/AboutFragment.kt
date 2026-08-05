@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,16 +26,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.aistra.hail.HailApp.Companion.app
 import com.aistra.hail.R
 import com.aistra.hail.app.HailData
 import com.aistra.hail.ui.main.MainFragment
 import com.aistra.hail.ui.theme.AppTheme
-import com.aistra.hail.utils.HPackages
 import com.aistra.hail.utils.HUI
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.imageview.ShapeableImageView
-import java.text.SimpleDateFormat
 
 class AboutFragment : MainFragment() {
 
@@ -45,17 +39,17 @@ class AboutFragment : MainFragment() {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 AppTheme {
-                    AboutScreen(HPackages.getUnhiddenPackageInfoOrNull(app.packageName)!!.firstInstallTime)
+                    AboutScreen()
                 }
             }
         }
 
     @Preview(showBackground = true)
     @Composable
-    fun PreviewAboutScreen() = AppTheme { AboutScreen(System.currentTimeMillis()) }
+    fun PreviewAboutScreen() = AppTheme { AboutScreen() }
 
     @Composable
-    private fun AboutScreen(installTime: Long) {
+    private fun AboutScreen() {
         var openLicenseDialog by remember { mutableStateOf(false) }
         if (openLicenseDialog) LicenseDialog { openLicenseDialog = false }
         Column(
@@ -82,47 +76,89 @@ class AboutFragment : MainFragment() {
                         text = stringResource(R.string.brand_name), style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
-                        text = stringResource(R.string.app_slogan), style = MaterialTheme.typography.bodyMedium
+                        text = "${stringResource(R.string.label_version)}: ${HailData.VERSION}",
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
             Spacer(modifier = Modifier.height(dimensionResource(R.dimen.padding_medium)))
             OutlinedCard(modifier = Modifier.padding(horizontal = dimensionResource(R.dimen.padding_medium))) {
+                Column(modifier = Modifier.padding(dimensionResource(R.dimen.padding_medium))) {
+                    Text(
+                        text = stringResource(R.string.about_hailstone_title),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(dimensionResource(R.dimen.padding_extra_small)))
+                    Text(
+                        text = buildAnnotatedString {
+                            append("I built ")
+                            withLink(
+                                LinkAnnotation.Url(
+                                    HailData.URL_GITHUB,
+                                    TextLinkStyles(
+                                        style = SpanStyle(color = MaterialTheme.colorScheme.primary)
+                                    )
+                                )
+                            ) { append("Hailstone") }
+                            append(" as a fork of ")
+                            withLink(
+                                LinkAnnotation.Url(
+                                    HailData.URL_ORIGINAL_HAIL,
+                                    TextLinkStyles(
+                                        style = SpanStyle(color = MaterialTheme.colorScheme.primary)
+                                    )
+                                )
+                            ) { append("Hail") }
+                            append(
+                                ", with a cleaner UI and a simpler, " +
+                                    "easier-to-understand user experience."
+                            )
+                        },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
                 ClickableItem(
-                    icon = Icons.Outlined.Update, title = R.string.label_version, desc = HailData.VERSION
-                ) { HUI.openLink(HailData.URL_RELEASES) }
-                ClickableItem(
-                    icon = Icons.Outlined.InstallMobile,
-                    title = R.string.label_time,
-                    desc = SimpleDateFormat.getDateInstance().format(installTime)
-                ) { HUI.showToast("\uD83E\uDD76\uD83D\uDCA8\uD83D\uDC09") }
-            }
-            Spacer(modifier = Modifier.height(dimensionResource(R.dimen.padding_medium)))
-            OutlinedCard(modifier = Modifier.padding(horizontal = dimensionResource(R.dimen.padding_medium))) {
-                ClickableItem(
-                    icon = Icons.AutoMirrored.Filled.Send, title = R.string.action_telegram
-                ) { HUI.openLink(HailData.URL_TELEGRAM) }
-                ClickableItem(
-                    icon = Icons.Outlined.Group, title = R.string.action_qq
-                ) { HUI.openLink(HailData.URL_QQ) }
-                ClickableItem(
-                    icon = Icons.Outlined.LocalMall, title = R.string.action_fdroid
-                ) { HUI.openLink(HailData.URL_FDROID) }
-                ClickableItem(
-                    icon = Icons.Outlined.CardGiftcard, title = R.string.action_donate, onClick = ::openDonateDialog
-                )
-            }
-            Spacer(modifier = Modifier.height(dimensionResource(R.dimen.padding_medium)))
-            OutlinedCard(modifier = Modifier.padding(horizontal = dimensionResource(R.dimen.padding_medium))) {
-                ClickableItem(
-                    icon = Icons.Outlined.Code, title = R.string.action_github
+                    icon = Icons.Outlined.Code,
+                    title = R.string.hailstone_github,
+                    desc = "gaurav9372/Hailstone"
                 ) { HUI.openLink(HailData.URL_GITHUB) }
                 ClickableItem(
-                    icon = Icons.Outlined.Translate, title = R.string.action_translate
-                ) { HUI.openLink(HailData.URL_TRANSLATE) }
+                    icon = Icons.Outlined.Code,
+                    title = R.string.original_hail_app,
+                    desc = "aistra0528/Hail"
+                ) { HUI.openLink(HailData.URL_ORIGINAL_HAIL) }
+            }
+            Spacer(modifier = Modifier.height(dimensionResource(R.dimen.padding_medium)))
+            OutlinedCard(modifier = Modifier.padding(horizontal = dimensionResource(R.dimen.padding_medium))) {
+                Column(modifier = Modifier.padding(dimensionResource(R.dimen.padding_medium))) {
+                    Text(
+                        text = stringResource(R.string.developer_title),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(dimensionResource(R.dimen.padding_extra_small)))
+                    Text(
+                        text = stringResource(R.string.developer_description),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
                 ClickableItem(
-                    icon = Icons.Outlined.Description, title = R.string.action_licenses
-                ) { openLicenseDialog = true }
+                    icon = Icons.Outlined.Person, title = R.string.developer_about
+                ) { HUI.openLink(HailData.URL_DEVELOPER_ABOUT) }
+                ClickableItem(
+                    icon = Icons.Outlined.ContactMail, title = R.string.developer_contact
+                ) { HUI.openLink(HailData.URL_DEVELOPER_CONTACT) }
+                ClickableItem(
+                    icon = Icons.Outlined.Article, title = R.string.developer_blogs
+                ) { HUI.openLink(HailData.URL_DEVELOPER_BLOG) }
+                ClickableItem(
+                    icon = Icons.Outlined.Apps, title = R.string.developer_other_apps
+                ) { HUI.openLink(HailData.URL_DEVELOPER_APPS) }
+            }
+            Spacer(modifier = Modifier.height(dimensionResource(R.dimen.padding_medium)))
+            OutlinedCard(modifier = Modifier.padding(horizontal = dimensionResource(R.dimen.padding_medium))) {
+                ClickableItem(
+                    icon = Icons.Outlined.Favorite, title = R.string.support_development
+                ) { HUI.openLink(HailData.URL_DONATE) }
             }
             Spacer(modifier = Modifier.height(dimensionResource(R.dimen.padding_medium)))
         }
@@ -173,36 +209,4 @@ class AboutFragment : MainFragment() {
         onDismissRequest = onDismiss,
         confirmButton = { TextButton(onClick = onDismiss) { Text(text = stringResource(android.R.string.ok)) } })
 
-    private fun openDonateDialog() {
-        MaterialAlertDialogBuilder(activity).setTitle(R.string.title_donate)
-            .setSingleChoiceItems(R.array.donate_payment_entries, 0) { dialog, which ->
-                dialog.dismiss()
-                when (which) {
-                    0 -> if (HUI.openLink(HailData.URL_ALIPAY_API).not()) {
-                        HUI.openLink(HailData.URL_ALIPAY)
-                    }
-
-                    1 -> MaterialAlertDialogBuilder(activity).setTitle(R.string.title_donate)
-                        .setView(ShapeableImageView(activity).apply {
-                            val padding = resources.getDimensionPixelOffset(R.dimen.padding_large)
-                            setPadding(0, padding, 0, padding)
-                            setImageResource(R.mipmap.qr_wechat)
-                        }).setPositiveButton(R.string.donate_wechat_scan) { _, _ ->
-                            app.packageManager.getLaunchIntentForPackage("com.tencent.mm")?.let {
-                                it.putExtra("LauncherUI.From.Scaner.Shortcut", true)
-                                startActivity(it)
-                            } ?: HUI.showToast(R.string.app_not_installed)
-                        }.setNegativeButton(android.R.string.cancel, null).show()
-
-                    2 -> MaterialAlertDialogBuilder(activity).setTitle(R.string.title_donate)
-                        .setMessage(R.string.donate_bilibili_msg)
-                        .setPositiveButton(R.string.donate_bilibili_space) { _, _ ->
-                            HUI.openLink(HailData.URL_BILIBILI)
-                        }.setNegativeButton(R.string.donate_bilibili_cancel, null).show()
-
-                    3 -> HUI.openLink(HailData.URL_LIBERAPAY)
-                    4 -> HUI.openLink(HailData.URL_PAYPAL)
-                }
-            }.setNegativeButton(android.R.string.cancel, null).show()
-    }
 }

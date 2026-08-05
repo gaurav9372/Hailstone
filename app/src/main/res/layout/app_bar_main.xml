@@ -43,4 +43,28 @@
         android:layout_margin="@dimen/fab_margin"
         app:icon="@drawable/ic_round_frozen" />
 
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/add_fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="88dp"
+        android:layout_marginBottom="@dimen/fab_margin"
+        android:contentDescription="@string/action_manage_apps"
+        android:visibility="gone"
+        app:srcCompat="@drawable/ic_outline_add" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/freeze_fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="@dimen/fab_margin"
+        android:layout_marginBottom="@dimen/fab_margin"
+        android:contentDescription="@string/action_freeze"
+        android:visibility="gone"
+        app:backgroundTint="?attr/colorPrimary"
+        app:tint="?attr/colorOnPrimary"
+        app:srcCompat="@drawable/ic_round_frozen" />
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

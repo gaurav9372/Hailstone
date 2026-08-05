@@ -27,20 +27,30 @@ import com.aistra.hail.utils.HUI
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 class MainActivity : AppCompatActivity(), NavController.OnDestinationChangedListener {
     lateinit var fab: ExtendedFloatingActionButton
+    lateinit var addFab: FloatingActionButton
+    lateinit var freezeFab: FloatingActionButton
     lateinit var appbar: AppBarLayout
     private lateinit var navController: NavController
+    private var biometricAuthenticated = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         val binding = initView()
-        if (!HailData.biometricLogin || BiometricManager.from(this)
-                .canAuthenticate(BIOMETRIC_STRONG or DEVICE_CREDENTIAL) != BiometricManager.BIOMETRIC_SUCCESS
-        ) return
+        if (!HailData.biometricLogin) return
         binding.root.isVisible = false
+        val authenticators = BIOMETRIC_STRONG or DEVICE_CREDENTIAL
+        if (BiometricManager.from(this).canAuthenticate(authenticators) !=
+            BiometricManager.BIOMETRIC_SUCCESS
+        ) {
+            HUI.showToast(R.string.biometric_unavailable)
+            finishAndRemoveTask()
+            return
+        }
         val biometricPrompt = BiometricPrompt(
             this,
             ContextCompat.getMainExecutor(this),
@@ -53,11 +63,14 @@ class MainActivity : AppCompatActivity(), NavController.OnDestinationChangedList
 
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                     super.onAuthenticationSucceeded(result)
+                    biometricAuthenticated = true
                     binding.root.isVisible = true
                 }
             })
-        val promptInfo = BiometricPrompt.PromptInfo.Builder().setTitle(getString(R.string.action_biometric))
-            .setSubtitle(getString(R.string.msg_biometric)).setNegativeButtonText(getString(android.R.string.cancel))
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle(getString(R.string.action_biometric))
+            .setSubtitle(getString(R.string.msg_biometric))
+            .setAllowedAuthenticators(authenticators)
             .build()
         biometricPrompt.authenticate(promptInfo)
     }
@@ -66,13 +79,15 @@ class MainActivity : AppCompatActivity(), NavController.OnDestinationChangedList
         setContentView(root)
         setSupportActionBar(appBarMain.toolbar)
         fab = appBarMain.fab
+        addFab = appBarMain.addFab
+        freezeFab = appBarMain.freezeFab
         appbar = appBarMain.appBarLayout
 
         val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         navController = navHostFragment.navController
         navController.addOnDestinationChangedListener(this@MainActivity)
         val appBarConfiguration = AppBarConfiguration.Builder(
-            R.id.nav_freezer, R.id.nav_settings, R.id.nav_about
+            R.id.nav_freezer, R.id.nav_lists, R.id.nav_settings
         ).build()
         setupActionBarWithNavController(navController, appBarConfiguration)
         bottomNav?.setupWithNavController(navController)
@@ -86,6 +101,8 @@ class MainActivity : AppCompatActivity(), NavController.OnDestinationChangedList
         bottomNav?.applyDefaultInsetter { paddingRelative(isRtl, start = true, end = true, bottom = true) }
         navRail?.applyDefaultInsetter { paddingRelative(isRtl, start = true, top = true, bottom = true) }
         fab.applyDefaultInsetter { marginRelative(isRtl, end = true, bottom = isLandscape) }
+        addFab.applyDefaultInsetter { marginRelative(isRtl, end = true, bottom = isLandscape) }
+        freezeFab.applyDefaultInsetter { marginRelative(isRtl, end = true, bottom = isLandscape) }
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -103,20 +120,31 @@ class MainActivity : AppCompatActivity(), NavController.OnDestinationChangedList
             }.setNegativeButton(android.R.string.cancel, null).show()
     }
 
-    /* override fun onStop() {
+    override fun onStop() {
         super.onStop()
-        if (HailData.biometricLogin) finishAndRemoveTask()
-    } */
+        if (HailData.biometricLogin && biometricAuthenticated && !isChangingConfigurations) {
+            finishAndRemoveTask()
+        }
+    }
 
     override fun onDestinationChanged(
         controller: NavController, destination: NavDestination, arguments: Bundle?
     ) {
         val isFreezer = destination.id == R.id.nav_freezer
+        val isLists = destination.id == R.id.nav_lists
         val isFreezerList = destination.id == R.id.freezerListFragment
-        val showPrimaryNavigation = destination.id != R.id.freezerListFragment
+        val showPrimaryNavigation = destination.id != R.id.freezerListFragment &&
+            destination.id != R.id.aboutFragment
         findViewById<View>(R.id.bottom_nav)?.isVisible = showPrimaryNavigation
         findViewById<View>(R.id.nav_rail)?.isVisible = showPrimaryNavigation
-        fab.tag = isFreezer
-        if (isFreezer || isFreezerList) fab.show() else fab.hide()
+        if (isFreezer || isFreezerList) {
+            fab.hide()
+            addFab.show()
+            freezeFab.show()
+        } else {
+            addFab.hide()
+            freezeFab.hide()
+            if (isLists) fab.show() else fab.hide()
+        }
     }
 }

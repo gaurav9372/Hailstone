@@ -32,6 +32,7 @@ import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import com.aistra.hail.HailApp.Companion.app
 import com.aistra.hail.R
 import com.aistra.hail.app.AppManager
@@ -259,6 +260,15 @@ class SettingsFragment : MainFragment(), MenuProvider {
                 HShortcuts.removeAllDynamicShortcuts()
                 HShortcuts.addDynamicShortcutAction(HailData.dynamicShortcutAction)
             }
+            horizontalDivider()
+            preference(
+                key = "about_the_app",
+                title = { Text(text = stringResource(R.string.about_the_app)) },
+                icon = { Icon(imageVector = Icons.Outlined.Info, contentDescription = null) },
+                onClick = {
+                    findNavController().navigate(R.id.action_nav_settings_to_aboutFragment)
+                }
+            )
         }
     }
 

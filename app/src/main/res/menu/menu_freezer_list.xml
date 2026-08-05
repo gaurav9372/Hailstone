@@ -10,12 +10,6 @@
         app:showAsAction="always|collapseActionView"
         tools:ignore="AlwaysShowAction" />
     <item
-        android:id="@+id/action_filter"
-        android:icon="@drawable/ic_outline_filter"
-        android:title="@string/filter_by"
-        app:showAsAction="always"
-        tools:ignore="AlwaysShowAction" />
-    <item
         android:id="@+id/action_view"
         android:icon="@drawable/ic_outline_view_module"
         android:title="@string/action_view_as"
@@ -32,11 +26,6 @@
             </group>
         </menu>
     </item>
-    <item
-        android:id="@+id/action_manage_apps"
-        android:icon="@drawable/ic_outline_add"
-        android:title="@string/action_manage_apps"
-        app:showAsAction="always" />
     <item
         android:id="@+id/action_edit_list"
         android:title="@string/action_edit"

@@ -1,6 +1,7 @@
 package com.aistra.hail.utils
 
 import android.os.FileUtils
+import android.system.Os
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.*
@@ -77,6 +78,18 @@ object HFiles {
 
     fun write(target: String, text: String): Boolean = runCatching {
         File(target).writeText(text)
+        true
+    }.getOrDefault(false)
+
+    fun writeAtomic(target: String, text: String): Boolean = runCatching {
+        val targetFile = File(target)
+        targetFile.parentFile?.mkdirs()
+        val temporaryFile = File(targetFile.parentFile, ".${targetFile.name}.tmp")
+        FileOutputStream(temporaryFile).use { output ->
+            output.write(text.toByteArray())
+            output.fd.sync()
+        }
+        Os.rename(temporaryFile.path, targetFile.path)
         true
     }.getOrDefault(false)
 }
