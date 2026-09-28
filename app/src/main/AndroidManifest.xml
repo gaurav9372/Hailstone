@@ -126,6 +126,16 @@
                 <action android:name="android.intent.action.PACKAGE_UNSUSPENDED_MANUALLY"/>
             </intent-filter>
         </receiver>
+        <receiver
+                android:name=".receiver.ModePackageReceiver"
+                android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.PACKAGE_ADDED" />
+                <action android:name="android.intent.action.PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.PACKAGE_CHANGED" />
+                <data android:scheme="package" />
+            </intent-filter>
+        </receiver>
 
 
         <service

@@ -20,7 +20,10 @@ class AutoFreezeService : NotificationListenerService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         createNotificationChannel()
         val freezeAuto = PendingIntent.getActivity(
-            applicationContext, 0, Intent(HailApi.ACTION_FREEZE_AUTO), PendingIntent.FLAG_IMMUTABLE
+            applicationContext,
+            0,
+            HailApi.authorizeInternal(Intent(HailApi.ACTION_FREEZE_AUTO)),
+            PendingIntent.FLAG_IMMUTABLE
         )
         val notification = NotificationCompat.Builder(this, channelID)
             .setContentTitle(getString(R.string.auto_freeze_notification_title))
@@ -30,7 +33,7 @@ class AutoFreezeService : NotificationListenerService() {
             val freezeNonWhitelisted = PendingIntent.getActivity(
                 applicationContext,
                 0,
-                Intent(HailApi.ACTION_FREEZE_NON_WHITELISTED),
+                HailApi.authorizeInternal(Intent(HailApi.ACTION_FREEZE_NON_WHITELISTED)),
                 PendingIntent.FLAG_IMMUTABLE
             )
             notification.addAction(

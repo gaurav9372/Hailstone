@@ -38,6 +38,7 @@ import com.aistra.hail.R
 import com.aistra.hail.app.AppManager
 import com.aistra.hail.app.HailApi
 import com.aistra.hail.app.HailData
+import com.aistra.hail.app.ModeData
 import com.aistra.hail.databinding.DialogInputBinding
 import com.aistra.hail.ui.main.MainActivity
 import com.aistra.hail.ui.main.MainFragment
@@ -430,6 +431,10 @@ class SettingsFragment : MainFragment(), MenuProvider {
     }
 
     fun onWorkingModeChange(rememberState: MutableState<String>, mode: String): Boolean {
+        if (mode != HailData.workingMode && ModeData.activeMode() != null) {
+            HUI.showToast(R.string.msg_disable_mode_before_working_mode_change)
+            return false
+        }
         // Show/hide terminal menu.
         activity.invalidateOptionsMenu()
         when {

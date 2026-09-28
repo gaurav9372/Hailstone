@@ -10,6 +10,8 @@ import com.aistra.hail.app.HailData
 import java.util.concurrent.TimeUnit
 
 object HWork {
+    private const val MODE_RECONCILE_WORK = "mode_reconcile"
+
     fun cancelWork(name: String) =
         WorkManager.getInstance(app).cancelUniqueWork(name)
 
@@ -35,6 +37,16 @@ object HWork {
                 setInputData(workDataOf(HailData.ACTION_LOCK to screenOff))
                 build()
             }
+        )
+    }
+
+    fun reconcileMode() {
+        WorkManager.getInstance(app).enqueueUniqueWork(
+            MODE_RECONCILE_WORK,
+            ExistingWorkPolicy.REPLACE,
+            OneTimeWorkRequestBuilder<ModeReconcileWorker>()
+                .setInitialDelay(1, TimeUnit.SECONDS)
+                .build()
         )
     }
 }

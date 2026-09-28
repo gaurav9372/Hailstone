@@ -41,7 +41,7 @@ object HShortcuts {
         if (ShortcutManagerCompat.isRequestPinShortcutSupported(app)) {
             val shortcut =
                 ShortcutInfoCompat.Builder(app, id).setIcon(icon).setShortLabel(label)
-                    .setIntent(intent).build()
+                    .setIntent(HailApi.authorizeInternal(intent)).build()
             ShortcutManagerCompat.requestPinShortcut(app, shortcut, null)
         } else HUI.showToast(
             R.string.operation_failed, app.getString(R.string.action_add_pin_shortcut)
@@ -91,7 +91,8 @@ object HShortcuts {
                     app, icon
                 )!!
             )
-        ).setShortLabel(app.getString(label)).setIntent(Intent(id)).build()
+        ).setShortLabel(app.getString(label))
+            .setIntent(HailApi.authorizeInternal(Intent(id))).build()
         ShortcutManagerCompat.pushDynamicShortcut(app, shortcut)
     }
 

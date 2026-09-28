@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+    <item
+        android:id="@+id/action_search"
+        android:icon="@drawable/ic_outline_search"
+        android:title="@string/action_search"
+        app:actionViewClass="androidx.appcompat.widget.SearchView"
+        app:showAsAction="always|collapseActionView"
+        tools:ignore="AlwaysShowAction" />
+    <item
+        android:id="@+id/action_view"
+        android:icon="@drawable/ic_outline_view_module"
+        android:title="@string/action_view_as"
+        app:showAsAction="always"
+        tools:ignore="AlwaysShowAction">
+        <menu>
+            <group android:checkableBehavior="single">
+                <item
+                    android:id="@+id/action_view_grid"
+                    android:title="@string/view_grid" />
+                <item
+                    android:id="@+id/action_view_list"
+                    android:title="@string/view_list" />
+            </group>
+        </menu>
+    </item>
+    <item
+        android:id="@+id/action_edit_mode"
+        android:title="@string/action_rename"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_delete_mode"
+        android:title="@string/action_delete"
+        app:showAsAction="never" />
+</menu>

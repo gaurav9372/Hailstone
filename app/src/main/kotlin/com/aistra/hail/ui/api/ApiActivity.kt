@@ -40,10 +40,31 @@ import com.aistra.hail.work.HWork.setAutoFreeze
 class ApiActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (intent.action != Intent.ACTION_SHOW_APP_INFO && !HailApi.isAuthorizedInternal(intent)) {
+            setContent { AppTheme { ExternalRequestDialog() } }
+            return
+        }
         runCatching {
             if (handleAction(intent.action)) finish()
         }.onFailure(::setErrorDialog)
     }
+
+    @Composable
+    private fun ExternalRequestDialog() = AlertDialog(
+        title = { Text(stringResource(R.string.external_request_title)) },
+        text = { Text(stringResource(R.string.external_request_message)) },
+        onDismissRequest = ::finish,
+        confirmButton = {
+            TextButton(onClick = {
+                runCatching {
+                    if (handleAction(intent.action)) finish()
+                }.onFailure(::setErrorDialog)
+            }) { Text(stringResource(R.string.action_allow)) }
+        },
+        dismissButton = {
+            TextButton(onClick = ::finish) { Text(stringResource(R.string.action_cancel)) }
+        }
+    )
 
     private fun handleAction(action: String?): Boolean {
         when (action) {

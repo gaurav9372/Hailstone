@@ -11,9 +11,14 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import com.aistra.hail.app.AppManager
 import com.aistra.hail.app.HailData
+import com.aistra.hail.app.ModeController
 import com.aistra.hail.services.AutoFreezeService
 import com.aistra.hail.utils.HDhizuku
 import com.aistra.hail.utils.HTarget
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class HailApp : Application() {
     override fun onCreate() {
@@ -22,6 +27,7 @@ class HailApp : Application() {
         // DirtyDataUpdater.update(app)
         if (!HTarget.S) setAppTheme(HailData.appTheme)
         if (HailData.workingMode.startsWith(HailData.DHIZUKU)) HDhizuku.init()
+        applicationScope.launch { ModeController.recoverAndReconcile() }
     }
 
     fun setAutoFreezeService(autoFreezeAfterLock: Boolean = HailData.autoFreezeAfterLock, context: Context = app) {
@@ -66,5 +72,6 @@ class HailApp : Application() {
 
     companion object {
         lateinit var app: HailApp private set
+        val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     }
 }

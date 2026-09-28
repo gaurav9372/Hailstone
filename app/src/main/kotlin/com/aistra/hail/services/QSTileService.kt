@@ -29,7 +29,7 @@ class QSTileService : TileService() {
             updateTile()
             return
         }
-        val intent = Intent(
+        val intent = HailApi.authorizeInternal(Intent(
             when (HailData.tileAction) {
                 HailData.ACTION_FREEZE_ALL -> HailApi.ACTION_FREEZE_ALL
                 HailData.ACTION_FREEZE_NON_WHITELISTED -> HailApi.ACTION_FREEZE_NON_WHITELISTED
@@ -37,7 +37,7 @@ class QSTileService : TileService() {
                 HailData.ACTION_LOCK_FREEZE -> HailApi.ACTION_LOCK_FREEZE
                 else -> HailApi.ACTION_UNFREEZE_ALL
             }
-        ).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (HTarget.U) startActivityAndCollapse(
             PendingIntent.getActivity(
                 this, 0, intent, PendingIntent.FLAG_IMMUTABLE

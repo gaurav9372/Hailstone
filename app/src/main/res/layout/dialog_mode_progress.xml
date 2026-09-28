@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:paddingHorizontal="@dimen/padding_large"
+    android:paddingTop="@dimen/padding_large"
+    android:paddingBottom="@dimen/padding_large">
+
+    <FrameLayout
+        android:layout_width="112dp"
+        android:layout_height="112dp">
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/progress_ring"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:indeterminate="true"
+            android:max="100"
+            app:indicatorSize="104dp"
+            app:trackThickness="8dp" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/progress_percentage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="0%"
+            android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
+            android:textStyle="bold" />
+
+    </FrameLayout>
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/progress_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/padding_medium"
+        android:gravity="center"
+        android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/progress_detail"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/padding_small"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="2"
+        android:text="@string/msg_mode_progress_preparing"
+        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+        android:textColor="?attr/colorOnSurfaceVariant" />
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/progress_scope"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/padding_extra_small"
+        android:gravity="center"
+        android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+        android:textColor="?attr/colorOnSurfaceVariant" />
+
+</LinearLayout>

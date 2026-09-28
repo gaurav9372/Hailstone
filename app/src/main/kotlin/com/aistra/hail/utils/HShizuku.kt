@@ -66,15 +66,20 @@ object HShizuku {
     }
 
     fun setAppDisabled(packageName: String, disabled: Boolean): Boolean {
-        HPackages.getApplicationInfoOrNull(packageName) ?: return false
-        if (disabled) forceStopApp(packageName)
-        runCatching {
-            val pm = asInterface("android.content.pm.IPackageManager", "package")
-            val newState = when {
-                !disabled -> PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-                isRoot -> PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-                else -> PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER
+        return packageName in setAppsDisabled(listOf(packageName), disabled)
+    }
+
+    fun setAppsDisabled(packageNames: Collection<String>, disabled: Boolean): Set<String> {
+        val packages = packageNames.distinct().filter {
+            HPackages.getApplicationInfoOrNull(it) != null && it.matches(PACKAGE_NAME_PATTERN)
+        }
+        if (packages.isEmpty()) return emptySet()
+        val pm = runCatching { asInterface("android.content.pm.IPackageManager", "package") }
+            .getOrElse {
+                HLog.e(it)
+                return emptySet()
             }
+        val method = runCatching {
             pm::class.java.getMethod(
                 "setApplicationEnabledSetting",
                 String::class.java,
@@ -82,11 +87,70 @@ object HShizuku {
                 Int::class.java,
                 Int::class.java,
                 String::class.java
-            ).invoke(pm, packageName, newState, 0, HPackages.myUserId, BuildConfig.APPLICATION_ID)
-        }.onFailure {
+            )
+        }.getOrElse {
             HLog.e(it)
+            return emptySet()
         }
-        return HPackages.isAppDisabled(packageName) == disabled
+        val newState = when {
+            !disabled -> PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+            isRoot -> PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+            else -> PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER
+        }
+        packages.forEach { packageName ->
+            runCatching {
+                method.invoke(
+                    pm,
+                    packageName,
+                    newState,
+                    0,
+                    HPackages.myUserId,
+                    callerPackage
+                )
+            }.onFailure(HLog::e)
+        }
+        // Give OEM package managers a moment to revert protected packages, then
+        // verify the whole chunk in one authoritative shell query.
+        SystemClock.sleep(400)
+        val (exitCode, output) = execute(
+            "pm list packages -d --user ${HPackages.myUserId}",
+            root = isRoot
+        )
+        if (exitCode != 0) return emptySet()
+        val disabledPackages = output.orEmpty().lineSequence()
+            .map { it.trim().removePrefix("package:") }
+            .filter { it.isNotBlank() }
+            .toHashSet()
+        return packages.filterTo(mutableSetOf()) { packageName ->
+            (packageName in disabledPackages) == disabled
+        }
+    }
+
+    fun setAppSuspendedViaShell(packageName: String, suspended: Boolean): Boolean {
+        if (!packageName.matches(PACKAGE_NAME_PATTERN) ||
+            HPackages.getApplicationInfoOrNull(packageName) == null
+        ) return false
+        val action = if (suspended) "suspend" else "unsuspend"
+        val (exitCode, _) = execute(
+            buildString {
+                append("pm $action --user ${HPackages.myUserId} $packageName >/dev/null 2>&1 || exit 1\n")
+                append("sleep 0.15\n")
+            },
+            root = isRoot
+        )
+        if (exitCode != 0) return false
+        return isAppSuspendedViaShell(packageName) == suspended
+    }
+
+    fun isAppSuspendedViaShell(packageName: String): Boolean {
+        if (!packageName.matches(PACKAGE_NAME_PATTERN)) return false
+        val (exitCode, output) = execute(
+            "dumpsys package $packageName | grep -m 1 'User ${HPackages.myUserId}:'",
+            root = isRoot
+        )
+        if (exitCode != 0) return false
+        val isSuspended = output.orEmpty().contains("suspended=true")
+        return isSuspended
     }
 
     fun setAppHidden(packageName: String, hidden: Boolean): Boolean {
@@ -225,4 +289,6 @@ object HShizuku {
 
     private val ParcelFileDescriptor.text
         get() = ParcelFileDescriptor.AutoCloseInputStream(this).use { it.bufferedReader().readText() }
+
+    private val PACKAGE_NAME_PATTERN = Regex("[A-Za-z0-9_.]+")
 }

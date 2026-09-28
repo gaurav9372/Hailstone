@@ -87,7 +87,7 @@ class MainActivity : AppCompatActivity(), NavController.OnDestinationChangedList
         navController = navHostFragment.navController
         navController.addOnDestinationChangedListener(this@MainActivity)
         val appBarConfiguration = AppBarConfiguration.Builder(
-            R.id.nav_freezer, R.id.nav_lists, R.id.nav_settings
+            R.id.nav_freezer, R.id.nav_lists, R.id.nav_modes, R.id.nav_settings
         ).build()
         setupActionBarWithNavController(navController, appBarConfiguration)
         bottomNav?.setupWithNavController(navController)
@@ -132,8 +132,11 @@ class MainActivity : AppCompatActivity(), NavController.OnDestinationChangedList
     ) {
         val isFreezer = destination.id == R.id.nav_freezer
         val isLists = destination.id == R.id.nav_lists
+        val isModes = destination.id == R.id.nav_modes
         val isFreezerList = destination.id == R.id.freezerListFragment
+        val isModeDetail = destination.id == R.id.modeDetailFragment
         val showPrimaryNavigation = destination.id != R.id.freezerListFragment &&
+            destination.id != R.id.modeDetailFragment &&
             destination.id != R.id.aboutFragment
         findViewById<View>(R.id.bottom_nav)?.isVisible = showPrimaryNavigation
         findViewById<View>(R.id.nav_rail)?.isVisible = showPrimaryNavigation
@@ -141,10 +144,14 @@ class MainActivity : AppCompatActivity(), NavController.OnDestinationChangedList
             fab.hide()
             addFab.show()
             freezeFab.show()
+        } else if (isModeDetail) {
+            fab.hide()
+            addFab.show()
+            freezeFab.hide()
         } else {
             addFab.hide()
             freezeFab.hide()
-            if (isLists) fab.show() else fab.hide()
+            if (isLists || isModes) fab.show() else fab.hide()
         }
     }
 }
