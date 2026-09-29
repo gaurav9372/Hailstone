@@ -145,6 +145,63 @@ object FreezerData {
         }
     }
 
+    @Synchronized
+    fun restoreLists(newLists: List<FreezerList>, overwrite: Boolean): Boolean {
+        // User restore explicitly recovers and resets canSave
+        canSave = true
+
+        if (overwrite) {
+            lists.clear()
+            lists.addAll(newLists.map { it.copy(packages = it.packages.distinct().toMutableList()) })
+            if (lists.none { it.id == ID_NO_CUSTOM_LIST }) {
+                lists.add(0, FreezerList(id = ID_NO_CUSTOM_LIST, name = app.getString(R.string.list_no_custom)))
+            }
+        } else {
+            if (lists.none { it.id == ID_NO_CUSTOM_LIST }) {
+                lists.add(0, FreezerList(id = ID_NO_CUSTOM_LIST, name = app.getString(R.string.list_no_custom)))
+            }
+            for (incoming in newLists) {
+                val existing = lists.firstOrNull { it.id == incoming.id || (incoming.id != ID_NO_CUSTOM_LIST && it.name == incoming.name) }
+                if (existing != null) {
+                    val merged = (existing.packages + incoming.packages).distinct()
+                    existing.packages.clear()
+                    existing.packages.addAll(merged)
+                } else {
+                    lists.add(incoming.copy(packages = incoming.packages.distinct().toMutableList()))
+                }
+            }
+        }
+
+        // Ensure noCustomList is at index 0
+        val fallbackIndex = lists.indexOfFirst { it.id == ID_NO_CUSTOM_LIST }
+        val fallback = if (fallbackIndex >= 0) lists[fallbackIndex] else {
+            FreezerList(id = ID_NO_CUSTOM_LIST, name = app.getString(R.string.list_no_custom)).also {
+                lists.add(0, it)
+            }
+        }
+        if (fallbackIndex > 0) {
+            lists.removeAt(fallbackIndex)
+            lists.add(0, fallback)
+        }
+
+        // Reconcile: Purge any packages assigned to custom lists from fallback
+        val assignedPackages = lists
+            .filter { it.id != ID_NO_CUSTOM_LIST }
+            .flatMapTo(mutableSetOf()) { it.packages }
+        fallback.packages.removeAll(assignedPackages)
+
+        // Ensure any apps currently frozen on the device are preserved in fallback if not in custom lists
+        val currentlyFrozen = runCatching {
+            HPackages.getInstalledApplications()
+                .map { it.packageName }
+                .filter { AppManager.isAppFrozen(it) }
+        }.getOrDefault(emptyList())
+        val allAssigned = assignedPackages + fallback.packages.toSet()
+        fallback.packages.addAll(currentlyFrozen.filterNot { it in allAssigned })
+
+        return save()
+    }
+
     fun save(): Boolean {
         if (!canSave) {
             HUI.showToast(R.string.msg_freezer_save_failed)

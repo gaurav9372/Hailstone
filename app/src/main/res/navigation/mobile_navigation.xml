@@ -67,7 +67,15 @@
         <action
             android:id="@+id/action_nav_settings_to_aboutFragment"
             app:destination="@id/aboutFragment" />
+        <action
+            android:id="@+id/action_nav_settings_to_backupRestoreFragment"
+            app:destination="@id/backupRestoreFragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/backupRestoreFragment"
+        android:name="com.aistra.hail.ui.backup.BackupRestoreFragment"
+        android:label="@string/title_backup_and_restore" />
 
     <fragment
         android:id="@+id/aboutFragment"

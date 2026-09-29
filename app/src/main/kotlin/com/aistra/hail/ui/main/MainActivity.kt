@@ -137,7 +137,8 @@ class MainActivity : AppCompatActivity(), NavController.OnDestinationChangedList
         val isModeDetail = destination.id == R.id.modeDetailFragment
         val showPrimaryNavigation = destination.id != R.id.freezerListFragment &&
             destination.id != R.id.modeDetailFragment &&
-            destination.id != R.id.aboutFragment
+            destination.id != R.id.aboutFragment &&
+            destination.id != R.id.backupRestoreFragment
         findViewById<View>(R.id.bottom_nav)?.isVisible = showPrimaryNavigation
         findViewById<View>(R.id.nav_rail)?.isVisible = showPrimaryNavigation
         if (isFreezer || isFreezerList) {

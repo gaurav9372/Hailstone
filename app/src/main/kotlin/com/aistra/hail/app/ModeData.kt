@@ -281,6 +281,47 @@ object ModeData {
         return save().also { saved -> if (!saved) modes.add(index, removed) }
     }
 
+    @Synchronized fun restoreModes(newModes: List<AppMode>, overwrite: Boolean): Boolean {
+        // Prevent restoring modes while a mode is actively controlling frozen packages
+        if (activeModeId != null) {
+            HUI.showToast(R.string.msg_disable_mode_before_restore)
+            return false
+        }
+
+        // Explicit user restore resets canSave so corrupt state can be recovered
+        canSave = true
+
+        if (overwrite) {
+            modes.clear()
+            modes.addAll(newModes.map {
+                it.copy(
+                    excludedPackages = it.excludedPackages.distinct().toMutableList(),
+                    frozenByMode = it.frozenByMode.distinct().toMutableList(),
+                    fallbackSuspendedPackages = it.fallbackSuspendedPackages.distinct().toMutableList()
+                )
+            })
+            activeModeId = null
+            activeWorkingMode = null
+            transactionState = STATE_IDLE
+        } else {
+            for (incoming in newModes) {
+                val existing = modes.firstOrNull { it.id == incoming.id || it.name == incoming.name }
+                if (existing != null) {
+                    val mergedExcluded = (existing.excludedPackages + incoming.excludedPackages).distinct()
+                    existing.excludedPackages.clear()
+                    existing.excludedPackages.addAll(mergedExcluded)
+                } else {
+                    modes.add(incoming.copy(
+                        excludedPackages = incoming.excludedPackages.distinct().toMutableList(),
+                        frozenByMode = incoming.frozenByMode.distinct().toMutableList(),
+                        fallbackSuspendedPackages = incoming.fallbackSuspendedPackages.distinct().toMutableList()
+                    ))
+                }
+            }
+        }
+        return save()
+    }
+
     @Synchronized fun save(): Boolean {
         if (!canSave) {
             HUI.showToast(R.string.msg_modes_save_failed)

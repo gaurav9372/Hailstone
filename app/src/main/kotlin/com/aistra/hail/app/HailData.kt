@@ -235,4 +235,44 @@ object HailData {
     fun changeAppsSort(sort: String) = sp.edit { putString(SORT_BY, sort) }
 
     fun changeAppsFilter(filter: String, enabled: Boolean) = sp.edit { putBoolean(filter, enabled) }
+
+    @Synchronized
+    fun restoreApps(newApps: List<AppInfo>, overwrite: Boolean) {
+        if (overwrite) {
+            checkedList.clear()
+            checkedList.addAll(newApps)
+        } else {
+            for (incoming in newApps) {
+                val existing = checkedList.firstOrNull { it.packageName == incoming.packageName }
+                if (existing != null) {
+                    existing.pinned = existing.pinned || incoming.pinned
+                    existing.whitelisted = existing.whitelisted || incoming.whitelisted
+                    val mergedTags = (existing.tagIdList + incoming.tagIdList).distinct()
+                    existing.tagIdList.clear()
+                    existing.tagIdList.addAll(mergedTags)
+                } else {
+                    checkedList.add(incoming)
+                }
+            }
+        }
+        saveApps()
+    }
+
+    @Synchronized
+    fun restoreTags(newTags: List<Pair<String, Int>>, overwrite: Boolean) {
+        if (overwrite) {
+            tags.clear()
+            tags.addAll(newTags)
+            if (tags.none { it.second == 0 }) {
+                tags.add(0, app.getString(R.string.label_default) to 0)
+            }
+        } else {
+            for (incoming in newTags) {
+                if (tags.none { it.first == incoming.first || it.second == incoming.second }) {
+                    tags.add(incoming)
+                }
+            }
+        }
+        saveTags()
+    }
 }

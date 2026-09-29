@@ -10,19 +10,22 @@ import androidx.annotation.ArrayRes
 import androidx.annotation.StringRes
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ManageSearch
+import androidx.compose.material.icons.automirrored.outlined.NavigateNext
 import androidx.compose.material.icons.automirrored.outlined.Shortcut
 import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.stringResource
@@ -261,6 +264,18 @@ class SettingsFragment : MainFragment(), MenuProvider {
                 HShortcuts.removeAllDynamicShortcuts()
                 HShortcuts.addDynamicShortcutAction(HailData.dynamicShortcutAction)
             }
+            horizontalDivider()
+            preference(
+                key = "backup_restore",
+                title = { Text(text = stringResource(R.string.title_backup_and_restore)) },
+                icon = { Icon(imageVector = Icons.Outlined.SettingsBackupRestore, contentDescription = null) },
+                widgetContainer = {
+                    Icon(imageVector = Icons.AutoMirrored.Outlined.NavigateNext, contentDescription = null)
+                },
+                onClick = {
+                    findNavController().navigate(R.id.action_nav_settings_to_backupRestoreFragment)
+                }
+            )
             horizontalDivider()
             preference(
                 key = "about_the_app",
