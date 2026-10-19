@@ -128,7 +128,7 @@ object HailData {
         ACTION_LOCK_FREEZE
     )
 
-    private val sp = PreferenceManager.getDefaultSharedPreferences(app)
+    private val sp by lazy { PreferenceManager.getDefaultSharedPreferences(app) }
     val sortBy get() = sp.getString(SORT_BY, SORT_NAME)
     val filterUserApps get() = sp.getBoolean(FILTER_USER_APPS, true)
     val filterSystemApps get() = sp.getBoolean(FILTER_SYSTEM_APPS, false)
@@ -157,9 +157,9 @@ object HailData {
     val skipNotifyingApp get() = sp.getBoolean(SKIP_NOTIFYING_APP, false)
     val dynamicShortcutAction get() = sp.getString(DYNAMIC_SHORTCUT_ACTION, ACTION_NONE)!!
 
-    private val dir = "${app.filesDir.path}/v1"
-    private val appsPath = "$dir/apps.json"
-    private val tagsPath = "$dir/tags.json"
+    private val dir get() = "${app.filesDir.path}/v1"
+    private val appsPath get() = "$dir/apps.json"
+    private val tagsPath get() = "$dir/tags.json"
 
     val checkedList: MutableList<AppInfo> by lazy {
         mutableListOf<AppInfo>().apply {
@@ -183,6 +183,19 @@ object HailData {
 
     fun isChecked(packageName: String): Boolean = checkedList.any { it.packageName == packageName }
 
+    /** Explicitly selected apps, with legacy tag/whitelist metadata preserved. */
+    fun managedApps(): List<AppInfo> = managedApps(FreezerData.managedPackageSnapshot(), checkedList.toList())
+        .filter { com.aistra.hail.utils.HPackages.isAppInstalled(it.packageName) }
+
+    internal fun managedApps(selectedPackages: List<String>, legacyApps: List<AppInfo>): List<AppInfo> {
+        val metadata = legacyApps.associateBy { it.packageName }
+        val packages = selectedPackages + metadata.keys
+        return packages.distinct().map { metadata[it] ?: AppInfo(it) }
+    }
+
+    fun isManaged(packageName: String): Boolean =
+        isChecked(packageName) || packageName in FreezerData.managedPackageSnapshot()
+
     fun addCheckedApp(packageName: String, tagId: Int = 0, saveApps: Boolean = true) {
         checkedList.add(AppInfo(packageName, tagIdList = mutableListOf(tagId)))
         if (saveApps) saveApps()
@@ -193,9 +206,9 @@ object HailData {
         if (saveApps) saveApps()
     }
 
-    fun saveApps() {
+    fun saveApps(): Boolean {
         if (!HFiles.exists(dir)) HFiles.createDirectories(dir)
-        HFiles.write(appsPath, JSONArray().run {
+        return HFiles.writeAtomic(appsPath, JSONArray().run {
             checkedList.forEach {
                 put(
                     JSONObject()
@@ -222,9 +235,9 @@ object HailData {
         }
     }
 
-    fun saveTags() {
+    fun saveTags(): Boolean {
         if (!HFiles.exists(dir)) HFiles.createDirectories(dir)
-        HFiles.write(tagsPath, JSONArray().run {
+        return HFiles.writeAtomic(tagsPath, JSONArray().run {
             tags.forEach {
                 put(JSONObject().put(KEY_TAG, it.first).put(KEY_ID, it.second))
             }
@@ -255,7 +268,7 @@ object HailData {
                 }
             }
         }
-        saveApps()
+        check(saveApps()) { "Failed to persist checked apps" }
     }
 
     @Synchronized
@@ -273,6 +286,6 @@ object HailData {
                 }
             }
         }
-        saveTags()
+        check(saveTags()) { "Failed to persist tags" }
     }
 }

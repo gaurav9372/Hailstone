@@ -31,6 +31,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.aistra.hail.HailApp.Companion.app
 import com.aistra.hail.R
 import com.aistra.hail.app.AppInfo
 import com.aistra.hail.app.AppManager
@@ -193,6 +194,10 @@ class FreezerListFragment : MainFragment(), MenuProvider {
         updateApps()
     }
 
+    override fun onPackagesChanged() {
+        updateApps()
+    }
+
     private fun updateApps() {
         val currentQuery = query
         val includeUserApps = showUserApps
@@ -222,6 +227,10 @@ class FreezerListFragment : MainFragment(), MenuProvider {
                 }.sortedBy { it.name.toString().lowercase() }
             }
             if (_binding == null) return@launch
+            selectedPackages.retainAll(packages.toSet())
+            if (selectionMode) {
+                if (selectedPackages.isEmpty()) closeSelectionBar() else refreshSelection()
+            }
             appsAdapter.submitList(apps) {
                 appsAdapter.notifyItemRangeChanged(0, appsAdapter.itemCount)
             }
@@ -293,6 +302,7 @@ class FreezerListFragment : MainFragment(), MenuProvider {
                 else -> {
                     if (shouldRemove) removeUnfrozenApps(apps) else updateApps()
                     HUI.showToast(if (frozen) R.string.msg_freeze else R.string.msg_unfreeze, result)
+                    app.setAutoFreezeService()
                 }
             }
         }
@@ -306,6 +316,7 @@ class FreezerListFragment : MainFragment(), MenuProvider {
             }
             freezerList?.packages?.removeAll { it in targetPackages }
             FreezerData.save()
+            app.setAutoFreezeService()
             updateApps()
         }
     }
@@ -523,6 +534,7 @@ class FreezerListFragment : MainFragment(), MenuProvider {
                     FreezerData.replaceListPackages(list.id, chosenPackages)
                     updateApps()
                 }
+                app.setAutoFreezeService()
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()

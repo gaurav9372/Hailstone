@@ -16,7 +16,7 @@ class AppInfo(
     val name get() = applicationInfo?.loadLabel(app.packageManager) ?: packageName
     val state
         get() = when {
-            applicationInfo == null -> State.NOT_FOUND
+            !HPackages.isAppInstalled(packageName) -> State.NOT_FOUND
             AppManager.isAppFrozen(packageName) -> State.FROZEN
             else -> State.UNFROZEN
         }

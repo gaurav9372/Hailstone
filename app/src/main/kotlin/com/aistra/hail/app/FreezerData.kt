@@ -88,6 +88,10 @@ object FreezerData {
 
     @Synchronized
     fun packageSnapshot(id: String): List<String> = findList(id)?.packages?.toList().orEmpty()
+        .filter(HPackages::isAppInstalled)
+
+    @Synchronized
+    fun managedPackageSnapshot(): List<String> = lists.flatMap { it.packages.toList() }.distinct()
 
     fun findList(id: String): FreezerList? =
         if (id == ID_ALL_FROZEN) allFrozenList else lists.firstOrNull { it.id == id }
@@ -199,6 +203,13 @@ object FreezerData {
         val allAssigned = assignedPackages + fallback.packages.toSet()
         fallback.packages.addAll(currentlyFrozen.filterNot { it in allAssigned })
 
+        return save()
+    }
+
+    @Synchronized
+    internal fun rollbackLists(snapshot: List<FreezerList>): Boolean {
+        lists.clear()
+        lists.addAll(snapshot.map { it.copy(packages = it.packages.toMutableList()) })
         return save()
     }
 

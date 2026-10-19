@@ -29,7 +29,7 @@ class AutoFreezeService : NotificationListenerService() {
             .setContentTitle(getString(R.string.auto_freeze_notification_title))
             .setSmallIcon(R.drawable.ic_round_frozen)
             .addAction(R.drawable.ic_round_frozen, getString(R.string.auto_freeze), freezeAuto)
-        if (HailData.checkedList.any { it.whitelisted }) {
+        if (HailData.managedApps().any { it.whitelisted }) {
             val freezeNonWhitelisted = PendingIntent.getActivity(
                 applicationContext,
                 0,
@@ -56,8 +56,17 @@ class AutoFreezeService : NotificationListenerService() {
 
     override fun onCreate() {
         super.onCreate()
-        instance = this
         registerScreenReceiver()
+    }
+
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        instance = this
+    }
+
+    override fun onListenerDisconnected() {
+        if (instance === this) instance = null
+        super.onListenerDisconnected()
     }
 
     private fun registerScreenReceiver() {
@@ -65,12 +74,20 @@ class AutoFreezeService : NotificationListenerService() {
     }
 
     override fun onDestroy() {
+        if (instance === this) instance = null
         super.onDestroy()
         unregisterReceiver(lockReceiver)
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
     }
 
     companion object {
-        lateinit var instance: AutoFreezeService private set
+        @Volatile
+        private var instance: AutoFreezeService? = null
+
+        /** Null means notification state is unavailable, not that no app is notifying. */
+        fun notifyingPackages(): Set<String>? = instance?.let { listener ->
+            runCatching { listener.activeNotifications?.mapTo(mutableSetOf()) { it.packageName } }
+                .getOrNull()
+        }
     }
 }

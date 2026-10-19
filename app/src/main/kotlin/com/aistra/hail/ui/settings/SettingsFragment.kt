@@ -22,6 +22,9 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -63,6 +66,7 @@ import rikka.shizuku.Shizuku
 
 class SettingsFragment : MainFragment(), MenuProvider {
     private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    private var refreshingApps by mutableStateOf(false)
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val menuHost = requireActivity() as MenuHost
@@ -266,6 +270,15 @@ class SettingsFragment : MainFragment(), MenuProvider {
             }
             horizontalDivider()
             preference(
+                key = "refresh_apps",
+                title = { Text(stringResource(if (refreshingApps) R.string.refreshing_apps else R.string.action_refresh_apps)) },
+                summary = { Text(stringResource(R.string.refresh_apps_summary)) },
+                icon = { Icon(imageVector = Icons.Outlined.Refresh, contentDescription = null) },
+                enabled = !refreshingApps,
+                onClick = ::refreshApps
+            )
+            horizontalDivider()
+            preference(
                 key = "backup_restore",
                 title = { Text(text = stringResource(R.string.title_backup_and_restore)) },
                 icon = { Icon(imageVector = Icons.Outlined.SettingsBackupRestore, contentDescription = null) },
@@ -285,6 +298,30 @@ class SettingsFragment : MainFragment(), MenuProvider {
                     findNavController().navigate(R.id.action_nav_settings_to_aboutFragment)
                 }
             )
+        }
+    }
+
+    private fun refreshApps() {
+        if (refreshingApps) return
+        refreshingApps = true
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val installedCount = withContext(Dispatchers.IO) {
+                    HPackages.getInstalledApplications().count {
+                        it.flags and android.content.pm.ApplicationInfo.FLAG_INSTALLED != 0
+                    }
+                }
+                AppIconCache.clear()
+                // App screens query current package state again when resumed.
+                HUI.showToast(getString(R.string.msg_apps_refreshed, installedCount))
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                HLog.e(e)
+                HUI.showToast(R.string.msg_apps_refresh_failed)
+            } finally {
+                refreshingApps = false
+            }
         }
     }
 

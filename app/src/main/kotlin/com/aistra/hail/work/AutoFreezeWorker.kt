@@ -16,7 +16,10 @@ class AutoFreezeWorker(context: Context, params: WorkerParameters) : Worker(cont
                     && HSystem.isInteractive(applicationContext))
             || isSkipWhileCharging(applicationContext)
         ) return Result.success() // Not stopping the AutoFreezeService here. The worker will run at some point. Then we'll stop the Service
-        val checkedList = HailData.checkedList.filter { !isSkipApp(applicationContext, it) }
+        val notifying = if (HailData.skipNotifyingApp) {
+            AutoFreezeService.notifyingPackages() ?: return Result.retry()
+        } else emptySet()
+        val checkedList = HailData.managedApps().filter { !isSkipApp(applicationContext, it, notifying) }
         val result = AppManager.setListFrozen(true, *checkedList.toTypedArray())
         return if (result == null) {
             Result.failure()
@@ -29,8 +32,8 @@ class AutoFreezeWorker(context: Context, params: WorkerParameters) : Worker(cont
     private fun isSkipWhileCharging(context: Context): Boolean =
         HailData.skipWhileCharging && HSystem.isCharging(context)
 
-    private fun isSkipApp(context: Context, appInfo: AppInfo): Boolean =
+    private fun isSkipApp(context: Context, appInfo: AppInfo, notifying: Set<String>): Boolean =
         AppManager.isAppFrozen(appInfo.packageName) || (HailData.skipForegroundApp && HSystem.isForegroundApp(
             context, appInfo.packageName
-        )) || (HailData.skipNotifyingApp && AutoFreezeService.instance.activeNotifications.any { it.packageName == appInfo.packageName }) || appInfo.whitelisted
+        )) || appInfo.packageName in notifying || appInfo.whitelisted
 }

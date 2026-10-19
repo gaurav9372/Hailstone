@@ -196,8 +196,25 @@ object ModeData {
         }
     }
 
-    @Synchronized fun beginActivation(id: String, workingMode: String, candidatePackages: Collection<String>): Boolean =
-        updateTransaction(id, workingMode, STATE_ENABLING, candidatePackages)
+    @Synchronized fun beginActivation(
+        id: String,
+        workingMode: String,
+        candidatePackages: Collection<String>,
+        fallbackSuspendedPackages: Collection<String> = emptyList()
+    ): Boolean = updateTransaction(id, workingMode, STATE_ENABLING, candidatePackages, fallbackSuspendedPackages)
+
+    /** Write the fallback mechanism before the shell mutation can outlive our process. */
+    @Synchronized fun recordFallbackIntent(packageName: String): Boolean {
+        val mode = activeMode() ?: return false
+        if (packageName !in mode.frozenByMode) return false
+        return updateTransaction(
+            mode.id,
+            activeWorkingMode,
+            transactionState,
+            mode.frozenByMode.toList(),
+            mode.fallbackSuspendedPackages.toList() + packageName
+        )
+    }
 
     @Synchronized fun finishActivation(
         id: String,
@@ -354,6 +371,18 @@ object ModeData {
         return HFiles.writeAtomic(path, root.toString()).also { saved ->
             if (!saved) HUI.showToast(R.string.msg_modes_save_failed)
         }
+    }
+
+    @Synchronized internal fun rollbackModes(snapshot: List<AppMode>): Boolean {
+        modes.clear()
+        modes.addAll(snapshot.map {
+            it.copy(
+                excludedPackages = it.excludedPackages.toMutableList(),
+                frozenByMode = it.frozenByMode.toMutableList(),
+                fallbackSuspendedPackages = it.fallbackSuspendedPackages.toMutableList()
+            )
+        })
+        return save()
     }
 
     private fun loadSource(): String? {

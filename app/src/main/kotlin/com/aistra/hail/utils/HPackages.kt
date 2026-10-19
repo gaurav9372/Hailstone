@@ -166,6 +166,14 @@ object HPackages {
         getApplicationInfoOrNull(packageName)?.run { flags and ApplicationInfo.FLAG_INSTALLED != ApplicationInfo.FLAG_INSTALLED }
             ?: true
 
+    fun isAppInstalled(packageName: String): Boolean =
+        isInstalled(getApplicationInfoOrNull(packageName)?.flags)
+
+    // MATCH_UNINSTALLED_PACKAGES also returns retained metadata and packages installed
+    // for other users. Disabled, suspended and hidden apps remain installed for this user.
+    internal fun isInstalled(flags: Int?): Boolean =
+        flags != null && flags and ApplicationInfo.FLAG_INSTALLED != 0
+
     fun isPrivilegedApp(packageName: String): Boolean = getApplicationInfoOrNull(packageName)?.let {
         (ApplicationInfo::class.java.getField("privateFlags").get(it) as Int) and 8 == 8
     } ?: false

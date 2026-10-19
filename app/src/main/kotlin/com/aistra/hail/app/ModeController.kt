@@ -8,7 +8,6 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.util.concurrent.ConcurrentHashMap
 
 data class ModeOperationResult(
     val success: Boolean,
@@ -27,7 +26,9 @@ data class ModeProgress(
 
 object ModeController {
     private val operationMutex = Mutex()
-    private val recentModeMutations = ConcurrentHashMap<String, Long>()
+    private val mutations = ModeMutationTracker(MODE_MUTATION_GRACE_MS) {
+        android.os.SystemClock.elapsedRealtime()
+    }
 
     private data class FreezeAttempt(
         val primary: List<String>,
@@ -95,9 +96,7 @@ object ModeController {
     }
 
     fun onPackageChanged(packageName: String) {
-        val now = android.os.SystemClock.elapsedRealtime()
-        if ((recentModeMutations[packageName] ?: 0L) >= now) return
-        recentModeMutations.remove(packageName)
+        if (mutations.isInternalMutation(packageName)) return
         val workingMode = ModeData.activeWorkingMode() ?: return
         if (ModeData.isOwnedByActiveMode(packageName) &&
             isTargetFrozen(packageName, workingMode)
@@ -133,6 +132,7 @@ object ModeController {
     private suspend fun resumeEnabling(mode: AppMode, workingMode: String): ModeOperationResult {
         val targetPackages = installedUserPackages().filterNot { it in mode.excludedPackages }
         val candidates = mode.frozenByMode.filter { it in targetPackages }
+        markModeMutation(candidates)
         return applyActivation(
             mode = mode,
             workingMode = workingMode,
@@ -246,7 +246,7 @@ object ModeController {
             }
         }
         fallbackPackages.forEach { packageName ->
-            if (!HShizuku.isAppSuspendedViaShell(packageName) ||
+            if (HShizuku.isAppSuspendedViaShell(packageName) == false ||
                 HShizuku.setAppSuspendedViaShell(packageName, suspended = false)
             ) changed++
             completed++
@@ -254,7 +254,7 @@ object ModeController {
                 ModeProgress(false, completed, ownedPackages.size, packageName)
             )
         }
-        val remainingFallback = fallbackPackages.filter { HShizuku.isAppSuspendedViaShell(it) }
+        val remainingFallback = fallbackPackages.filter { HShizuku.isAppSuspendedViaShell(it) != false }
         val remainingPrimary = primaryPackages.filter { AppManager.isAppFrozen(it, workingMode) }
         val remaining = remainingPrimary + remainingFallback
         if (remaining.isNotEmpty()) {
@@ -292,7 +292,7 @@ object ModeController {
                 })
             }
             failedToRelease.addAll(fallbackToRelease.filterNot {
-                !HShizuku.isAppSuspendedViaShell(it) ||
+                HShizuku.isAppSuspendedViaShell(it) == false ||
                     HShizuku.setAppSuspendedViaShell(it, suspended = false)
             })
             if (failedToRelease.isNotEmpty()) {
@@ -302,9 +302,12 @@ object ModeController {
                 return ModeOperationResult(false, failedCount = failedToRelease.size)
             }
         }
-        val verifiedFallback = previousFallback.filter {
-            it in targetPackages && HShizuku.isAppSuspendedViaShell(it)
+        val fallbackStates = previousFallback.filter { it in targetPackages }
+            .associateWith { HShizuku.isAppSuspendedViaShell(it) }
+        if (fallbackStates.values.any { it == null }) {
+            return ModeOperationResult(false, failedCount = fallbackStates.values.count { it == null })
         }
+        val verifiedFallback = fallbackStates.filterValues { it == true }.keys.toList()
         val verifiedPrimary = previousOwned.filter {
             it !in previousFallback &&
                 it in targetPackages &&
@@ -319,7 +322,7 @@ object ModeController {
             ) ModeOperationResult(true) else ModeOperationResult(false)
         }
         val plannedOwned = verifiedOwned + missing
-        if (!ModeData.finishActivation(
+        if (!ModeData.beginActivation(
                 mode.id,
                 workingMode,
                 plannedOwned,
@@ -362,7 +365,11 @@ object ModeController {
         ) ModeOperationResult(true, attempt.succeeded.size)
         else {
             val remaining = rollbackFreezeAttempt(attempt, workingMode)
-            persistRollbackState(mode.id, workingMode, remaining)
+            ModeData.finishActivation(
+                mode.id, workingMode,
+                verifiedOwned + remaining.succeeded,
+                verifiedFallback + remaining.fallbackSuspended
+            )
             ModeOperationResult(
                 false,
                 attempt.succeeded.size - remaining.succeeded.size,
@@ -385,14 +392,32 @@ object ModeController {
         if (workingMode == HailData.MODE_SHIZUKU_DISABLE) {
             packages.chunked(SHIZUKU_BATCH_SIZE).forEach { chunk ->
                 val alreadyDisabled = chunk.filter { AppManager.isAppFrozen(it, workingMode) }
-                val toDisable = chunk.filterNot { it in alreadyDisabled }
+                val recordedFallback = ModeData.activeMode()?.fallbackSuspendedPackages.orEmpty().toSet()
+                val fallbackStates = chunk.filter { it in recordedFallback && it !in alreadyDisabled }
+                    .associateWith { HShizuku.isAppSuspendedViaShell(it) }
+                val toDisable = chunk.filterNot { it in alreadyDisabled || fallbackStates[it] == true ||
+                    (it in fallbackStates && fallbackStates[it] == null) }
                 val disabled = HShizuku.setAppsDisabled(toDisable, disabled = true)
                 chunk.forEach { packageName ->
                     when {
                         packageName in alreadyDisabled -> if (recovering) primary.add(packageName)
-                        packageName in disabled -> primary.add(packageName)
-                        HShizuku.setAppSuspendedViaShell(packageName, suspended = true) ->
+                        fallbackStates[packageName] == true -> fallback.add(packageName)
+                        packageName in fallbackStates && fallbackStates[packageName] == null -> {
+                            // Unknown is still owned; never erase its recovery mechanism.
                             fallback.add(packageName)
+                            failed.add(packageName)
+                        }
+                        packageName in disabled || AppManager.isAppFrozen(packageName, workingMode) ->
+                            primary.add(packageName)
+                        ModeData.recordFallbackIntent(packageName) -> {
+                            if (HShizuku.setAppSuspendedViaShell(packageName, suspended = true)) {
+                                fallback.add(packageName)
+                            } else {
+                                // A failed verification can follow a successful mutation.
+                                if (HShizuku.isAppSuspendedViaShell(packageName) != false) fallback.add(packageName)
+                                failed.add(packageName)
+                            }
+                        }
                         else -> failed.add(packageName)
                     }
                     onPackageFinished(completed++, packageName)
@@ -437,7 +462,7 @@ object ModeController {
         }
         val remainingFallback = mutableListOf<String>()
         attempt.fallbackSuspended.forEach {
-            if (HShizuku.isAppSuspendedViaShell(it) &&
+            if (HShizuku.isAppSuspendedViaShell(it) != false &&
                 !HShizuku.setAppSuspendedViaShell(it, suspended = false)
             ) remainingFallback.add(it)
         }
@@ -459,8 +484,7 @@ object ModeController {
     }
 
     private fun markModeMutation(packages: Collection<String>) {
-        val expiresAt = android.os.SystemClock.elapsedRealtime() + MODE_MUTATION_GRACE_MS
-        packages.forEach { recentModeMutations[it] = expiresAt }
+        mutations.mark(packages)
     }
 
     private fun isTargetFrozen(packageName: String, workingMode: String): Boolean =
@@ -475,7 +499,15 @@ object ModeController {
         .toList()
 
     private suspend fun <T> durableOperation(block: suspend () -> T): T =
-        withContext(NonCancellable + Dispatchers.IO) { block() }
+        withContext(NonCancellable + Dispatchers.IO) {
+            mutations.begin()
+            try {
+                block()
+            } finally {
+                // Cover delayed broadcasts from the last batch, however long the operation took.
+                mutations.end()
+            }
+        }
 
     private const val SHIZUKU_BATCH_SIZE = 64
     private const val MODE_MUTATION_GRACE_MS = 10_000L

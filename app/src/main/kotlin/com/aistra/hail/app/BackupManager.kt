@@ -184,10 +184,12 @@ object BackupManager {
         if (jsonString.length > 20 * 1024 * 1024) return null // Max 20MB payload to prevent OOM
         val root = JSONObject(jsonString)
         val version = root.optInt(KEY_BACKUP_VERSION, 1)
+        require(version == BACKUP_VERSION) { "Unsupported backup version" }
         val appVersion = root.optString(KEY_APP_VERSION, "unknown")
         val timestamp = root.optLong(KEY_TIMESTAMP, System.currentTimeMillis())
 
-        val dataObj = root.optJSONObject(KEY_DATA) ?: root
+        val dataObj = if (root.has(KEY_DATA)) root.getJSONObject(KEY_DATA) else root
+        validateStructure(dataObj)
 
         var parsedLists: List<FreezerList>? = null
         var parsedCheckedApps: List<AppInfo>? = null
@@ -213,7 +215,7 @@ object BackupManager {
                                 packages = packageList.distinct().toMutableList()
                             )
                         )
-                    }
+                    }.getOrThrow()
                 }
                 parsedLists = list
             }
@@ -235,7 +237,7 @@ object BackupManager {
                                 } ?: mutableListOf()
                             )
                         )
-                    }
+                    }.getOrThrow()
                 }
                 parsedCheckedApps = apps
             }
@@ -247,7 +249,7 @@ object BackupManager {
                     runCatching {
                         val item = tagsArray.getJSONObject(i)
                         tags.add(item.getString("tag") to item.getInt("id"))
-                    }
+                    }.getOrThrow()
                 }
                 parsedTags = tags
             }
@@ -268,7 +270,7 @@ object BackupManager {
                             packages = packageList.distinct().toMutableList()
                         )
                     )
-                }
+                }.getOrThrow()
             }
             parsedLists = list
         }
@@ -297,7 +299,7 @@ object BackupManager {
                             fallbackSuspendedPackages = MutableList(fallback.length()) { fallback.getString(it) }.distinct().toMutableList()
                         )
                     )
-                }
+                }.getOrThrow()
             }
             parsedModes = list
         }
@@ -321,7 +323,7 @@ object BackupManager {
                     typesMap[key] = typesObj.getString(key)
                 }
             }
-            parsedSettings = valuesMap
+            parsedSettings = BackupSettings.normalize(valuesMap)
             parsedSettingsTypes = typesMap
         }
 
@@ -342,6 +344,76 @@ object BackupManager {
         }
     }.getOrNull()
 
+    /** Reject a damaged section as a whole; overwrite must never use a partial parse. */
+    private fun validateStructure(data: JSONObject) {
+        fun strings(item: JSONObject, key: String, required: Boolean = false) {
+            if (!item.has(key) && !required) return
+            val array = item.getJSONArray(key)
+            for (index in 0 until array.length()) {
+                val value = array.get(index)
+                require(value is String && value.isNotBlank()) { "Invalid $key entry" }
+            }
+        }
+        fun records(array: JSONArray, mode: Boolean) {
+            val ids = mutableSetOf<String>()
+            for (index in 0 until array.length()) {
+                val item = array.getJSONObject(index)
+                val id = item.get("id")
+                require(id is String && id.isNotBlank() && ids.add(id)) { "Invalid or duplicate id" }
+                require(item.get("name") is String && item.getString("name").isNotBlank())
+                if (mode) {
+                    strings(item, "excluded_packages", required = true)
+                    strings(item, "frozen_by_mode")
+                    strings(item, "fallback_suspended_packages")
+                } else {
+                    require(id != FreezerData.ID_ALL_FROZEN)
+                    strings(item, "packages", required = true)
+                }
+            }
+        }
+        if (data.has(KEY_LISTS)) {
+            when (val lists = data.get(KEY_LISTS)) {
+                is JSONArray -> records(lists, mode = false)
+                is JSONObject -> {
+                    records(lists.getJSONArray(KEY_FREEZER_LISTS), mode = false)
+                    if (lists.has(KEY_CHECKED_APPS)) {
+                        val apps = lists.getJSONArray(KEY_CHECKED_APPS)
+                        for (index in 0 until apps.length()) {
+                            val item = apps.getJSONObject(index)
+                            require(item.get("package") is String && item.getString("package").isNotBlank())
+                            for (key in listOf("pinned", "whitelisted")) {
+                                if (item.has(key)) require(item.get(key) is Boolean)
+                            }
+                            if (item.has("tags")) item.getJSONArray("tags").let { tags ->
+                                for (tag in 0 until tags.length()) require(tags.get(tag) is Int)
+                            }
+                        }
+                    }
+                    if (lists.has(KEY_TAGS)) lists.getJSONArray(KEY_TAGS).let { tags ->
+                        for (index in 0 until tags.length()) {
+                            val item = tags.getJSONObject(index)
+                            require(item.get("tag") is String && item.get("id") is Int)
+                        }
+                    }
+                }
+                else -> error("Invalid lists section")
+            }
+        }
+        if (data.has(KEY_MODES)) {
+            when (val modes = data.get(KEY_MODES)) {
+                is JSONArray -> records(modes, mode = true)
+                is JSONObject -> records(modes.getJSONArray(KEY_MODES), mode = true)
+                else -> error("Invalid modes section")
+            }
+        }
+        if (data.has(KEY_SETTINGS)) {
+            val settings = data.getJSONObject(KEY_SETTINGS)
+            if (settings.has(KEY_VALUES)) settings.getJSONObject(KEY_VALUES)
+            if (settings.has(KEY_TYPES)) settings.getJSONObject(KEY_TYPES)
+        }
+    }
+
+    @Synchronized
     fun restoreBackup(
         payload: BackupPayload,
         restoreLists: Boolean,
@@ -355,7 +427,16 @@ object BackupManager {
             return false
         }
 
-        // Bug 8: Transaction snapshots for atomic rollback
+        val validatedSettings = runCatching {
+            if (restoreSettings) BackupSettings.normalize(payload.settings.orEmpty()) else emptyMap()
+        }
+            .getOrElse { return false }
+        // Match the settings screen: changing mechanism requires disabling the active mode.
+        if (ModeData.activeMode() != null &&
+            validatedSettings[HailData.WORKING_MODE]?.let { it != HailData.workingMode } == true
+        ) return false
+
+        // Snapshot before the first mutation, including operations that can fail midway.
         val listsSnapshot = FreezerData.lists.map { it.copy(packages = it.packages.toMutableList()) }
         val modesSnapshot = ModeData.modesSnapshot()
         val appsSnapshot = HailData.checkedList.map {
@@ -369,55 +450,49 @@ object BackupManager {
         val tagsSnapshot = HailData.tags.toList()
         val prefsSnapshot = PreferenceManager.getDefaultSharedPreferences(app).all.toMap()
 
-        var listsRestored = false
-        var modesRestored = false
-        var settingsRestored = false
+        val transaction = RestoreTransaction()
 
         return runCatching {
             if (restoreLists && payload.lists != null) {
-                val ok = FreezerData.restoreLists(payload.lists, overwrite)
-                if (!ok) throw IllegalStateException("Failed to restore freezer lists")
-                listsRestored = true
+                transaction.apply(rollback = { FreezerData.rollbackLists(listsSnapshot) }) {
+                    check(FreezerData.restoreLists(payload.lists, overwrite)) { "Failed to restore freezer lists" }
+                }
                 if (payload.checkedApps != null) {
-                    HailData.restoreApps(payload.checkedApps, overwrite)
+                    transaction.apply(rollback = { HailData.restoreApps(appsSnapshot, overwrite = true) }) {
+                        HailData.restoreApps(payload.checkedApps, overwrite)
+                    }
                 }
                 if (payload.tags != null) {
-                    HailData.restoreTags(payload.tags, overwrite)
+                    transaction.apply(rollback = { HailData.restoreTags(tagsSnapshot, overwrite = true) }) {
+                        HailData.restoreTags(payload.tags, overwrite)
+                    }
                 }
             }
 
             if (restoreModes && payload.modes != null) {
-                val ok = ModeData.restoreModes(payload.modes, overwrite)
-                if (!ok) throw IllegalStateException("Failed to restore modes")
-                modesRestored = true
+                transaction.apply(rollback = { ModeData.rollbackModes(modesSnapshot) }) {
+                    check(ModeData.restoreModes(payload.modes, overwrite)) { "Failed to restore modes" }
+                }
             }
 
             if (restoreSettings && payload.settings != null) {
-                restoreSettings(payload.settings, payload.settingsTypes ?: emptyMap())
-                settingsRestored = true
+                transaction.apply(rollback = { rollbackSettings(prefsSnapshot) }) {
+                    restoreSettings(validatedSettings)
+                }
             }
 
+            if (restoreLists) app.setAutoFreezeService()
             true
-        }.getOrElse { e ->
-            // Rollback on any failure to guarantee consistency
-            if (listsRestored) {
-                FreezerData.restoreLists(listsSnapshot, overwrite = true)
-                HailData.restoreApps(appsSnapshot, overwrite = true)
-                HailData.restoreTags(tagsSnapshot, overwrite = true)
-            }
-            if (modesRestored) {
-                ModeData.restoreModes(modesSnapshot, overwrite = true)
-            }
-            if (settingsRestored) {
-                rollbackSettings(prefsSnapshot)
-            }
+        }.getOrElse {
+            transaction.rollback()
+            runCatching { app.setAutoFreezeService() }
             false
         }
     }
 
     private fun rollbackSettings(prefsSnapshot: Map<String, *>) {
         val sp = PreferenceManager.getDefaultSharedPreferences(app)
-        sp.edit {
+        sp.edit(commit = true) {
             clear()
             for ((key, value) in prefsSnapshot) {
                 when (value) {
@@ -430,16 +505,20 @@ object BackupManager {
                 }
             }
         }
-        app.setAppTheme(HailData.appTheme)
-        app.setAutoFreezeService(HailData.autoFreezeAfterLock)
+        runCatching { app.setAppTheme(HailData.appTheme) }
+        runCatching { app.setAutoFreezeService(HailData.autoFreezeAfterLock) }
+        AppIconCache.clear()
+        runCatching {
+            HShortcuts.removeAllDynamicShortcuts()
+            HShortcuts.addDynamicShortcutAction(HailData.dynamicShortcutAction)
+        }
     }
 
-    private fun restoreSettings(settings: Map<String, Any?>, settingsTypes: Map<String, String>) {
+    private fun restoreSettings(settings: Map<String, Any>) {
         val sp = PreferenceManager.getDefaultSharedPreferences(app)
-        sp.edit {
+        val editor = sp.edit()
+        with(editor) {
             for ((key, value) in settings) {
-                if (value == null) continue
-                val type = settingsTypes[key]
 
                 // Bug 1: Biometric Login Validation
                 if (key == HailData.BIOMETRIC_LOGIN) {
@@ -489,52 +568,16 @@ object BackupManager {
                     continue
                 }
 
-                // Bug 2: Float vs Int vs Boolean Type Resolution Ordering
-                val isFloatKey = type == "float" || key.endsWith("_f") || key == HailData.HOME_FONT_SIZE || key == HailData.AUTO_FREEZE_DELAY
-                val isBooleanKey = type == "boolean" || (type == null && value is Boolean)
-                val isIntKey = type == "int"
-                val isLongKey = type == "long"
-                val isStringSetKey = type == "string_set" || value is JSONArray || value is Set<*>
-
-                when {
-                    isFloatKey -> {
-                        val floatVal = (value as? Number)?.toFloat()
-                            ?: value.toString().toFloatOrNull()
-                            ?: 0f
-                        putFloat(key, floatVal)
-                    }
-                    isBooleanKey -> {
-                        val boolVal = (value as? Boolean)
-                            ?: (value.toString().toBooleanStrictOrNull() ?: false)
-                        putBoolean(key, boolVal)
-                    }
-                    isIntKey -> {
-                        val intVal = (value as? Number)?.toInt()
-                            ?: value.toString().toIntOrNull()
-                            ?: 0
-                        putInt(key, intVal)
-                    }
-                    isLongKey -> {
-                        val longVal = (value as? Number)?.toLong()
-                            ?: value.toString().toLongOrNull()
-                            ?: 0L
-                        putLong(key, longVal)
-                    }
-                    isStringSetKey -> {
-                        val set = when (value) {
-                            is JSONArray -> MutableList(value.length()) { value.getString(it) }.toSet()
-                            is Collection<*> -> value.mapNotNull { it?.toString() }.toSet()
-                            else -> emptySet()
-                        }
-                        putStringSet(key, set)
-                    }
-                    value is Int -> putInt(key, value)
-                    value is Long -> putLong(key, value)
-                    value is Double -> putFloat(key, value.toFloat())
-                    else -> putString(key, value.toString())
+                when (value) {
+                    is Boolean -> putBoolean(key, value)
+                    is Float -> putFloat(key, value)
+                    is String -> putString(key, value)
+                    else -> error("Unsupported preference: $key")
                 }
             }
         }
+
+        check(editor.commit()) { "Failed to persist settings" }
 
         if (settings.containsKey(HailData.APP_THEME)) {
             app.setAppTheme(HailData.appTheme)

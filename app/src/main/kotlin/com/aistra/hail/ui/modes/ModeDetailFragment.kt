@@ -103,6 +103,10 @@ class ModeDetailFragment : MainFragment(), MenuProvider {
             }
     }
 
+    override fun onPackagesChanged() {
+        updateApps()
+    }
+
     private fun updateApps() {
         val currentMode = mode
         if (currentMode == null) {
@@ -114,6 +118,7 @@ class ModeDetailFragment : MainFragment(), MenuProvider {
         updateJob = lifecycleScope.launch {
             val apps = withContext(Dispatchers.IO) {
                 currentMode.excludedPackages.map { AppInfo(it) }
+                    .filter { HPackages.isAppInstalled(it.packageName) }
                     .filter {
                         currentQuery.isEmpty() ||
                             it.packageName.contains(currentQuery, ignoreCase = true) ||

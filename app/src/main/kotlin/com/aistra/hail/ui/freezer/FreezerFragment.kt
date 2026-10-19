@@ -20,6 +20,7 @@ import com.aistra.hail.extensions.isLandscape
 import com.aistra.hail.extensions.isRtl
 import com.aistra.hail.extensions.paddingRelative
 import com.aistra.hail.ui.main.MainFragment
+import com.aistra.hail.utils.HPackages
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -68,6 +69,10 @@ class FreezerFragment : MainFragment() {
         updateLists()
     }
 
+    override fun onPackagesChanged() {
+        updateLists()
+    }
+
     private fun updateLists() {
         val noCustomList = FreezerData.noCustomList
         val lists = listOf(noCustomList.copy(packages = noCustomList.packages.toMutableList())) +
@@ -77,6 +82,7 @@ class FreezerFragment : MainFragment() {
         updateListsJob = lifecycleScope.launch {
             val statuses = withContext(Dispatchers.IO) {
                 lists.map { list ->
+                    list.packages.retainAll(list.packages.filter(HPackages::isAppInstalled).toSet())
                     val frozenCount = list.packages.count(AppManager::isAppFrozen)
                     FreezerListStatus(
                         list = list,

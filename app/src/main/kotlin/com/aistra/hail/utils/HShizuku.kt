@@ -142,15 +142,19 @@ object HShizuku {
         return isAppSuspendedViaShell(packageName) == suspended
     }
 
-    fun isAppSuspendedViaShell(packageName: String): Boolean {
-        if (!packageName.matches(PACKAGE_NAME_PATTERN)) return false
+    fun isAppSuspendedViaShell(packageName: String): Boolean? {
+        if (!packageName.matches(PACKAGE_NAME_PATTERN)) return null
         val (exitCode, output) = execute(
             "dumpsys package $packageName | grep -m 1 'User ${HPackages.myUserId}:'",
             root = isRoot
         )
-        if (exitCode != 0) return false
-        val isSuspended = output.orEmpty().contains("suspended=true")
-        return isSuspended
+        if (exitCode != 0) return null
+        val state = output.orEmpty()
+        return when {
+            state.contains("suspended=true") -> true
+            state.contains("suspended=false") -> false
+            else -> null
+        }
     }
 
     fun setAppHidden(packageName: String, hidden: Boolean): Boolean {
@@ -280,15 +284,16 @@ object HShizuku {
     fun execute(command: String, root: Boolean = isRoot): Pair<Int, String?> = runCatching {
         IShizukuService.Stub.asInterface(Shizuku.getBinder()).newProcess(arrayOf(if (root) "su" else "sh"), null, null)
             .run {
-                ParcelFileDescriptor.AutoCloseOutputStream(outputStream).use {
-                    it.write(command.toByteArray())
-                }
-                waitFor() to inputStream.text.ifBlank { errorStream.text }.also { destroy() }
+                ShellCommandRunner.run(
+                    command,
+                    ParcelFileDescriptor.AutoCloseOutputStream(outputStream),
+                    ParcelFileDescriptor.AutoCloseInputStream(inputStream),
+                    ParcelFileDescriptor.AutoCloseInputStream(errorStream),
+                    ::waitFor,
+                    ::destroy
+                )
             }
     }.getOrElse { 1 to it.stackTraceToString() }
-
-    private val ParcelFileDescriptor.text
-        get() = ParcelFileDescriptor.AutoCloseInputStream(this).use { it.bufferedReader().readText() }
 
     private val PACKAGE_NAME_PATTERN = Regex("[A-Za-z0-9_.]+")
 }

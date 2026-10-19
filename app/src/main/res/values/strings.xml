@@ -258,5 +258,10 @@
     <string name="msg_restore_nothing_selected">Please select at least one item to restore</string>
     <string name="dialog_delete_backup_title">Delete Backup</string>
     <string name="dialog_delete_backup_msg">Are you sure you want to delete this backup file?</string>
+    <string name="action_refresh_apps">Refresh apps</string>
+    <string name="refreshing_apps">Refreshing apps…</string>
+    <string name="refresh_apps_summary">Reload installed apps and icons</string>
+    <string name="msg_apps_refreshed">App list refreshed · %1$d installed apps</string>
+    <string name="msg_apps_refresh_failed">Could not refresh apps. Please try again.</string>
 </resources>
 
